@@ -1,0 +1,117 @@
+{
+  "project_name": "HydroMind-X",
+  "theme": "Dark, futuristic 'control-room' dashboard with neon accents",
+  "typography": {
+    "strategy": "The 'Editorial Future' Tech Variant",
+    "fonts": {
+      "headings": "Unbounded",
+      "body": "Chivo",
+      "terminal_and_data": "JetBrains Mono"
+    },
+    "hierarchy_rules": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-black uppercase",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl font-semibold",
+      "h4": "text-lg sm:text-xl font-medium tracking-wide uppercase",
+      "body": "text-base leading-relaxed",
+      "data_labels": "text-xs tracking-[0.2em] uppercase font-mono text-cyan-400"
+    }
+  },
+  "colors": {
+    "archetype": "ELECTRIC & NEON (Future, Speed, Disruption)",
+    "palette": {
+      "background_primary": "#05050A",
+      "background_secondary": "#0D0D14",
+      "surface_glass": "rgba(13, 13, 20, 0.6)",
+      "border_default": "rgba(0, 240, 255, 0.15)",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#A0A0B0",
+      "accent_cyan_water": "#00F0FF",
+      "accent_alert_orange": "#FF5C00",
+      "accent_warning_yellow": "#FFD700"
+    },
+    "contrast_rules": "No pure white backgrounds. Ensure terminal fonts have 4.5:1 contrast against dark backgrounds. Use 1px inner borders for glassmorphism panels to define edges."
+  },
+  "visual_enhancers": {
+    "surface_styles": {
+      "dashboard_cards": "Retro-Futurism/Terminal Look: Deep black/indigo bg, 1px solid border-cyan-400/20, subtle drop-shadow-[0_0_8px_rgba(0,240,255,0.1)].",
+      "chatbot_panel": "Glassmorphism with heavy backdrop-blur-xl, saturate-150, 1px inner border of white/10.",
+      "critical_metrics": "The 'Tracing Beam' effect around the WAI gauge to indicate live processing."
+    },
+    "textures": "Scanlines (CSS repeating-linear-gradient) over the cooling visualization to enhance the control-room feel. Grain/noise overlay on the dark background.",
+    "decorations": "ASCII art loader for the chatbot. Pulsing neon glows on active sliders."
+  },
+  "component_name_guidelines": {
+    "AI_Chatbot": "Use Shadcn components heavily customized (border-cyan/30, bg-black/80) to look like a terminal.",
+    "Scenario_Simulator": "HTML/Tailwind raw inputs with glowing thumbs. Custom styled `<input type='range'>` or Shadcn Sliders styled with neon cyan tracks.",
+    "WAI_Gauge": "Recharts radial bar chart OR custom SVG with stroke-dashoffset animation. JetBrains Mono for the 0-100 number.",
+    "Cooling_Visualization": "Framer Motion animated SVG pipes. Colors transition cyan to orange based on state.",
+    "Workload_Board": "Bento Grid cards. Status dots (green/red) next to workload names.",
+    "SDG_Badges": "Monochrome or neon-tinted icons representing goals 6, 9, 11, 12, 13."
+  },
+  "grids_and_layouts": {
+    "strategy": "High Density Grid (For Dashboards / Analytics) combined with Mode A (Asymmetry) for the Hero.",
+    "spacing": "Generous Spacing (p-6 to p-8 inside cards). Gap strategy: gap-6 for dashboard items.",
+    "layout_structure": {
+      "Hero": "col-span-full, dark background image with gradient overlay, bold Unbounded typography.",
+      "Simulator_and_WAI": "Bento split: Sliders col-span-1 md:col-span-3, WAI Gauge col-span-1 md:col-span-1 (Hero dominant square).",
+      "Cooling_Vis": "col-span-full md:col-span-4 row-span-2. Needs height to show schematic.",
+      "Workloads_and_Chatbot": "Chatbot is fixed sidebar or col-span-1 md:col-span-2 tall card."
+    }
+  },
+  "motion_and_interactions": {
+    "hover_states": "-translate-y-1, border color darkens to solid cyan, text glows.",
+    "transitions": "transition-transform 0.2s ease, opacity 0.2s ease. NO transition-all.",
+    "data_feed": "Subtle pulsing opacity on live data numbers to simulate real-time updates.",
+    "cooling_animation": "SVG stroke dash animations to show water/coolant flowing through pipes."
+  },
+  "accessibility": {
+    "contrast": "APCA contrast verified for cyan on black.",
+    "motion": "Respect prefers-reduced-motion for the cooling flow SVGs.",
+    "testing": "All interactive elements (sliders, buttons, chatbot input) MUST have data-testid attributes (e.g., data-testid='temp-slider')."
+  },
+  "media_and_assets": {
+    "image_urls": {
+      "hero_background": {
+        "url": "https://images.unsplash.com/photo-1782155789425-65fb6d8cc8ac?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHw0fHxmdXR1cmlzdGljJTIwZGF0YSUyMGNlbnRlciUyMGRhcmt8ZW58MHx8fHwxNzg2NjA1NjY4fDA&ixlib=rb-4.1.0&q=85",
+        "category": "Hero Section",
+        "description": "Futuristic circuit board with glowing green/cyan light, perfect for the 'Think Before It Drinks' hero."
+      },
+      "water_accent": {
+        "url": "https://images.unsplash.com/photo-1776549157434-035d6b8141c9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHw0fHx3YXRlciUyMHNwbGFzaCUyMGRhcmslMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4NjYwNTY2OHww&ixlib=rb-4.1.0&q=85",
+        "category": "WAI Gauge / Water Stats background",
+        "description": "Abstract water splashes on a dark background. Blend mode: overlay/screen."
+      },
+      "control_room_reference": {
+        "url": "https://images.unsplash.com/photo-1685720543547-cc4873188c75?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwxfHxjb250cm9sJTIwcm9vbSUyMG5lb258ZW58MHx8fHwxNzg2NjA1NjY4fDA&ixlib=rb-4.1.0&q=85",
+        "category": "About/System Overview section",
+        "description": "Dark control room filled with electronic equipment."
+      }
+    },
+    "icons": "lucide-react for UI components. @phosphor-icons/react for data/tech specific icons."
+  },
+  "3d_libraries": {
+    "recommendation": "Framer Motion for simple SVG 2.5D Cooling Visualization (keeps performance high while looking cinematic). Recharts for the WAI gauge.",
+    "install_commands": "yarn add framer-motion recharts lucide-react @phosphor-icons/react sonner"
+  },
+  "instructions_to_main_agent": [
+    "Install Unbounded, Chivo, and JetBrains Mono from Google Fonts.",
+    "Initialize Tailwind config with Void Black (#05050A) background, and Cyan (#00F0FF) / Orange (#FF5C00) accents.",
+    "Do NOT use pure white backgrounds or generic SaaS styles. Follow the 'ELECTRIC & NEON' archetype.",
+    "Build the dashboard using CSS Grid (High Density). The chatbot should feel like a cinematic terminal.",
+    "Build the Cooling System Visualization using an SVG diagram of pipes and heat exchangers. Animate the 'flow' using Framer Motion stroke-dashoffset.",
+    "Map the AI decision logic: When WAI is low, UI switches accents to Orange/Red and changes text output.",
+    "Ensure 'Export Report' generates a blob or opens a formatted print view.",
+    "Implement the 'Tracing Beam' effect on the WAI container to emphasize it is the core AI calculation."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "DO NOT output generic 'AI slop'. Make the UI feel highly custom, edgy, and cinematic.",
+    "Dark colors must not be used as flat gradients. Use solid dark backgrounds with neon 1px borders or subtle drop-shadow glows.",
+    "DO NOT center align the app container. Respect optical alignment and left-align data logs.",
+    "Every slider interaction must instantly update the WAI gauge and Cooling visual (immediate feedback pattern).",
+    "DO NOT use emojis for icons. Use Phosphor Icons or Lucide.",
+    "Include `data-testid` on all interactive UI components, sliders, and form actions.",
+    "Never use fully transparent backgrounds on surfaces that content scrolls beneath."
+  ],
+  "GENERAL_UI_UX_DESIGN_GUIDELINES": "Prioritize cognitive load reduction. Group related sliders (Environment vs Data Center). Ensure real-time state changes are visually obvious through color (cyan = healthy, orange = warning). High contrast is mandatory. Avoid fully transparent backgrounds on interactive elements."
+}
