@@ -102,3 +102,43 @@ export function decide(wai) {
 export function allowedWorkloadNames(decision) {
   return decision.allowedTiers.flatMap((t) => WORKLOADS[t]);
 }
+
+// ---- Predictive Water-Risk Forecast ----
+// Projects tomorrow's sensor state from today's, driven by the weather trend.
+const WEATHER_TREND = {
+  Rainy: { temperature: -3, humidity: 12, waterLevel: 9, reservoir: 7, waterFlow: 22, coolingDemand: -5 },
+  Cloudy: { temperature: -1, humidity: 4, waterLevel: 2, reservoir: 1, waterFlow: 4, coolingDemand: -1 },
+  Clear: { temperature: 1, humidity: -2, waterLevel: -3, reservoir: -2, waterFlow: -4, coolingDemand: 2 },
+  "Hot & Dry": { temperature: 4, humidity: -10, waterLevel: -9, reservoir: -7, waterFlow: -22, coolingDemand: 8 },
+  Drought: { temperature: 6, humidity: -14, waterLevel: -14, reservoir: -12, waterFlow: -32, coolingDemand: 10 },
+};
+
+const RANGES = {
+  temperature: [18, 45],
+  humidity: [10, 95],
+  waterLevel: [0, 100],
+  waterFlow: [0, 240],
+  reservoir: [0, 100],
+  coolingDemand: [0, 100],
+};
+
+export function projectTomorrow(inputs) {
+  const trend = WEATHER_TREND[inputs.weather] || WEATHER_TREND.Clear;
+  const next = { ...inputs };
+  for (const key of Object.keys(trend)) {
+    const [lo, hi] = RANGES[key];
+    next[key] = Math.round(Math.max(lo, Math.min(hi, inputs[key] + trend[key])));
+  }
+  const tomorrowWai = computeWAI(next);
+  const todayWai = computeWAI(inputs);
+  // 24h trajectory (7 points) interpolated today -> tomorrow with slight curve
+  const points = Array.from({ length: 7 }, (_, i) => {
+    const t = i / 6;
+    const eased = t * t * (3 - 2 * t);
+    return {
+      label: i === 0 ? "Now" : `+${i * 4}h`,
+      wai: Math.round(todayWai + (tomorrowWai - todayWai) * eased),
+    };
+  });
+  return { next, tomorrowWai, todayWai, decision: decide(tomorrowWai), points, delta: tomorrowWai - todayWai };
+}

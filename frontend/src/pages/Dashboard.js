@@ -8,6 +8,7 @@ import { AIDecision } from "../components/AIDecision";
 import { WorkloadBoard } from "../components/WorkloadBoard";
 import { SDGBadges } from "../components/SDGBadges";
 import { AuditReport } from "../components/AuditReport";
+import { ForecastCard } from "../components/ForecastCard";
 
 const HERO_BG =
   "https://images.unsplash.com/photo-1782155789425-65fb6d8cc8ac?crop=entropy&cs=srgb&fm=jpg&q=85&w=1600";
@@ -78,6 +79,7 @@ export default function Dashboard() {
       </section>
 
       <WorkloadBoard />
+      <ForecastCard />
       <AuditReport />
       <SDGBadges />
 

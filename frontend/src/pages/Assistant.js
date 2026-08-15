@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Send, Bot, User, Droplets } from "lucide-react";
+import { Send, Bot, User, Droplets, Mic, Square, Volume2, VolumeX } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -26,7 +26,66 @@ export default function Assistant() {
   ]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceOut, setVoiceOut] = useState(false);
   const scrollRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const voiceOutRef = useRef(false);
+
+  useEffect(() => {
+    voiceOutRef.current = voiceOut;
+    if (!voiceOut && typeof window !== "undefined") window.speechSynthesis?.cancel();
+  }, [voiceOut]);
+
+  const speechSupported =
+    typeof window !== "undefined" &&
+    (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  const speak = (text) => {
+    if (!voiceOutRef.current || typeof window === "undefined" || !window.speechSynthesis) return;
+    const clean = text.replace(/[*#_`>]/g, "").replace(/\s+/g, " ").trim();
+    if (!clean) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.rate = 1.03;
+    u.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find((v) => /female|samantha|google us english|zira/i.test(v.name)) || voices.find((v) => v.lang?.startsWith("en"));
+    if (preferred) u.voice = preferred;
+    window.speechSynthesis.speak(u);
+  };
+
+  const toggleListen = () => {
+    if (!speechSupported) return;
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    recognitionRef.current = rec;
+    let finalText = "";
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t;
+        else interim += t;
+      }
+      setInput(finalText || interim);
+    };
+    rec.onend = () => {
+      setListening(false);
+      const q = (finalText || "").trim();
+      if (q) send(q);
+    };
+    rec.onerror = () => setListening(false);
+    setListening(true);
+    rec.start();
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -48,6 +107,7 @@ export default function Assistant() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let assistantText = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -59,6 +119,7 @@ export default function Assistant() {
           if (!line.startsWith("data: ")) continue;
           const payload = JSON.parse(line.slice(6));
           if (payload.delta) {
+            assistantText += payload.delta;
             setMessages((m) => {
               const copy = [...m];
               copy[copy.length - 1] = {
@@ -76,6 +137,7 @@ export default function Assistant() {
           }
         }
       }
+      speak(assistantText);
     } catch (e) {
       setMessages((m) => {
         const copy = [...m];
@@ -93,12 +155,25 @@ export default function Assistant() {
         <div className="p-2.5 rounded-lg bg-hydro-cyan/10 border border-hydro-cyan/30">
           <Droplets className="w-6 h-6 text-hydro-cyan text-glow-cyan" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="font-display font-black text-3xl tracking-tighter uppercase">HYDRA Assistant</h1>
           <p className="font-mono text-[10px] tracking-widest uppercase text-hydro-cyan/60">
             Powered by Gemini · knows everything about HydroMind-X
           </p>
         </div>
+        <button
+          onClick={() => setVoiceOut((v) => !v)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border font-mono text-[11px] uppercase tracking-wider transition-colors ${
+            voiceOut
+              ? "border-hydro-cyan/50 text-hydro-cyan bg-hydro-cyan/10"
+              : "border-white/10 text-white/50 hover:text-white"
+          }`}
+          data-testid="voice-output-toggle"
+          title="Speak HYDRA's answers aloud"
+        >
+          {voiceOut ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          <span className="hidden sm:inline">Voice {voiceOut ? "On" : "Off"}</span>
+        </button>
       </div>
 
       <div className="hx-glass rounded-2xl overflow-hidden flex flex-col" style={{ height: "62vh", minHeight: 420 }}>
@@ -167,10 +242,25 @@ export default function Assistant() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask HYDRA about HydroMind-X…"
+            placeholder={listening ? "Listening…" : "Ask HYDRA about HydroMind-X…"}
             className="flex-1 bg-hydro-void/60 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-hydro-cyan/50 transition-colors"
             data-testid="chat-input"
           />
+          {speechSupported && (
+            <button
+              type="button"
+              onClick={toggleListen}
+              className={`p-3 rounded-lg border transition-colors ${
+                listening
+                  ? "bg-hydro-orange/20 border-hydro-orange/50 text-hydro-orange animate-pulse-glow"
+                  : "hx-panel text-white/60 hover:text-hydro-cyan"
+              }`}
+              data-testid="voice-input-btn"
+              title="Ask by voice"
+            >
+              {listening ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          )}
           <button
             type="submit"
             disabled={streaming || !input.trim()}

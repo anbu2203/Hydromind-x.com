@@ -155,6 +155,39 @@ async def chat_history(session_id: str):
     return msgs
 
 
+class ForecastRequest(BaseModel):
+    today_wai: int
+    tomorrow_wai: int
+    tomorrow_band: str
+    weather: str
+
+
+@api_router.post("/forecast/advisory")
+async def forecast_advisory(req: ForecastRequest):
+    trend = "worsen" if req.tomorrow_wai < req.today_wai else ("improve" if req.tomorrow_wai > req.today_wai else "hold steady")
+    prompt = (
+        f"You are HYDRA forecasting data-center water risk. Today's Water Availability Index (WAI) is {req.today_wai}. "
+        f"With the '{req.weather}' forecast, tomorrow's WAI is predicted to {trend} to {req.tomorrow_wai} "
+        f"({req.tomorrow_band} band). In no more than 2 short, punchy sentences, give a proactive pre-warning and ONE concrete recommended action for the operations team. No preamble, no markdown headings."
+    )
+    chat_client = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"forecast-{req.tomorrow_wai}",
+        system_message=SYSTEM_PROMPT,
+    ).with_model("gemini", "gemini-3-flash-preview")
+    text = ""
+    try:
+        async for event in chat_client.stream_message(UserMessage(text=prompt)):
+            if isinstance(event, TextDelta):
+                text += event.content
+            elif isinstance(event, StreamDone):
+                break
+    except Exception as e:
+        logger.exception("forecast advisory error")
+        return {"advisory": f"Forecast advisory unavailable: {e}"}
+    return {"advisory": text.strip()}
+
+
 @api_router.post("/audit/report", response_model=AuditReport)
 async def create_audit_report(snap: AuditSnapshot):
     count = await db.audit_reports.count_documents({})
