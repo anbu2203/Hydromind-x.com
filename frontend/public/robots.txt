@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://aqua-intelligence-8.emergent.host/sitemap.xml
