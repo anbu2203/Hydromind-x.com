@@ -14,10 +14,20 @@ export const Nav = () => {
   return (
     <header className="sticky top-0 z-50 hx-glass border-b border-white/10">
       <div
-        className="w-full text-center py-1 border-b border-hydro-cyan/10 font-mono text-[10px] tracking-[0.25em] uppercase text-white/50"
+        className="w-full text-center py-1 border-b border-hydro-cyan/10 font-mono text-[10px] tracking-[0.25em] uppercase text-white/50 flex items-center justify-center gap-2 flex-wrap px-3"
         data-testid="created-by-banner"
       >
-        Created by <span className="text-hydro-cyan">Anbumathi Chezhian</span>
+        <span>Created by <span className="text-hydro-cyan">Anbumathi Chezhian</span></span>
+        <span className="text-white/20">·</span>
+        <a
+          href="https://v0-anbumathi-chezhian-2203.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-hydro-cyan/80 hover:text-hydro-cyan underline underline-offset-2 transition-colors"
+          data-testid="founder-portfolio-link-top"
+        >
+          Founder Portfolio ↗
+        </a>
       </div>
       <div className="max-w-[1400px] mx-auto px-5 h-16 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2.5 group" data-testid="brand-logo">

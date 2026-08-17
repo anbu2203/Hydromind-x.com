@@ -83,8 +83,20 @@ export default function Dashboard() {
       <AuditReport />
       <SDGBadges />
 
-      <footer className="pt-6 pb-4 text-center font-mono text-[10px] tracking-widest uppercase text-white/30">
-        HydroMind-X · Team AquaNova Trinity · "Every AI decision should consider every drop of water."
+      <footer className="pt-6 pb-4 text-center font-mono text-[10px] tracking-widest uppercase text-white/30 space-y-2">
+        <div>HydroMind-X · Team AquaNova Trinity · "Every AI decision should consider every drop of water."</div>
+        <div>
+          Created by Anbumathi Chezhian ·{" "}
+          <a
+            href="https://v0-anbumathi-chezhian-2203.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-hydro-cyan/80 hover:text-hydro-cyan underline underline-offset-2 transition-colors"
+            data-testid="founder-portfolio-link-bottom"
+          >
+            Founder Portfolio ↗
+          </a>
+        </div>
       </footer>
     </div>
   );
