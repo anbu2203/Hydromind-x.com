@@ -112,3 +112,51 @@ def test_audit_report_create_and_list_increment():
     assert arr[0]["report_no"] == d2["report_no"]
     # no _id leaks
     assert "_id" not in arr[0]
+
+
+# ---- Forecast advisory ----
+def test_forecast_advisory_returns_text():
+    payload = {"today_wai": 72, "tomorrow_wai": 45, "tomorrow_band": "Moderate", "weather": "Hot & Dry"}
+    r = requests.post(f"{API}/forecast/advisory", json=payload, timeout=60)
+    assert r.status_code == 200
+    data = r.json()
+    assert "advisory" in data
+    assert isinstance(data["advisory"], str) and len(data["advisory"]) > 20
+    assert "unavailable" not in data["advisory"].lower()
+
+
+# ---- Chat grounding: founder ----
+def _run_chat(msg, session_id=None):
+    session_id = session_id or f"TEST_{uuid.uuid4().hex[:8]}"
+    r = requests.post(f"{API}/chat", json={"session_id": session_id, "message": msg}, stream=True, timeout=90)
+    assert r.status_code == 200
+    text = ""
+    for raw in r.iter_lines(decode_unicode=True):
+        if not raw or not raw.startswith("data: "):
+            continue
+        obj = json.loads(raw[6:])
+        if "delta" in obj:
+            text += obj["delta"]
+        elif obj.get("done"):
+            break
+        elif "error" in obj:
+            pytest.fail(f"stream error: {obj['error']}")
+    return text
+
+
+def test_chat_grounding_founder():
+    text = _run_chat("Who is the founder of HydroMind-X?")
+    assert "Anbumathi" in text, f"founder answer missing name: {text!r}"
+
+
+def test_chat_grounding_team_roster():
+    text = _run_chat("Who is team AquaNova Trinity? List all members.")
+    low = text.lower()
+    assert "anbumathi" in low
+    assert "shrenik" in low
+    assert "thamseel" in low
+
+
+def test_chat_grounding_researcher():
+    text = _run_chat("Who is the researcher on the team?")
+    assert "Shrenik" in text, f"researcher answer wrong: {text!r}"

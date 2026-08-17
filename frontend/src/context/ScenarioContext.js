@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { DEFAULT_INPUTS, computeWAI, decide, allowedWorkloadNames } from "../lib/hydro";
 
 const ScenarioContext = createContext(null);
@@ -6,17 +6,23 @@ const ScenarioContext = createContext(null);
 export function ScenarioProvider({ children }) {
   const [inputs, setInputs] = useState(DEFAULT_INPUTS);
 
-  const setInput = (key, value) =>
-    setInputs((prev) => ({ ...prev, [key]: value }));
+  const setInput = useCallback(
+    (key, value) => setInputs((prev) => ({ ...prev, [key]: value })),
+    []
+  );
 
-  const reset = () => setInputs(DEFAULT_INPUTS);
+  const reset = useCallback(() => setInputs(DEFAULT_INPUTS), []);
 
-  const value = useMemo(() => {
+  const derived = useMemo(() => {
     const wai = computeWAI(inputs);
     const decision = decide(wai);
-    const allowed = allowedWorkloadNames(decision);
-    return { inputs, setInput, reset, wai, decision, allowed };
+    return { wai, decision, allowed: allowedWorkloadNames(decision) };
   }, [inputs]);
+
+  const value = useMemo(
+    () => ({ inputs, setInput, reset, ...derived }),
+    [inputs, setInput, reset, derived]
+  );
 
   return (
     <ScenarioContext.Provider value={value}>{children}</ScenarioContext.Provider>

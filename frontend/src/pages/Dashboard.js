@@ -13,6 +13,12 @@ import { ForecastCard } from "../components/ForecastCard";
 const HERO_BG =
   "https://images.unsplash.com/photo-1782155789425-65fb6d8cc8ac?crop=entropy&cs=srgb&fm=jpg&q=85&w=1600";
 
+const RISE = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
+const RISE_0 = { ...RISE, transition: { duration: 0.5 } };
+const RISE_1 = { ...RISE, transition: { duration: 0.5, delay: 0.1 } };
+const RISE_2 = { ...RISE, transition: { duration: 0.5, delay: 0.2 } };
+const RISE_3 = { ...RISE, transition: { duration: 0.5, delay: 0.3 } };
+
 export default function Dashboard() {
   return (
     <div className="max-w-[1400px] mx-auto px-5 py-6 space-y-10 relative z-10">
@@ -25,13 +31,13 @@ export default function Dashboard() {
         </div>
         <div className="relative px-6 sm:px-10 py-14 sm:py-20 max-w-3xl">
           <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            {...RISE_0}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-hydro-cyan/30 bg-hydro-cyan/10 font-mono text-[10px] uppercase tracking-widest text-hydro-cyan mb-5"
           >
             <Sparkles className="w-3.5 h-3.5" /> AI-Driven Water Intelligence
           </motion.div>
           <motion.h1
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+            {...RISE_1}
             className="font-display font-black text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]"
           >
             Making AI <br />
@@ -39,14 +45,14 @@ export default function Dashboard() {
             <br /> It Drinks.
           </motion.h1>
           <motion.p
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
+            {...RISE_2}
             className="mt-5 text-base sm:text-lg text-white/70 max-w-xl leading-relaxed"
           >
             HydroMind-X continuously audits water, computes a live Water Availability Index, and
             steers data-center cooling &amp; AI workloads toward sustainability.
           </motion.p>
           <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
+            {...RISE_3}
             className="mt-7 flex flex-wrap gap-3"
           >
             <Link

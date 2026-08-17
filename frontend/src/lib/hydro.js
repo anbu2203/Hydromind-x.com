@@ -47,48 +47,49 @@ export const WORKLOADS = {
   Flexible: ["AI Model Training", "Video Rendering", "Data Analytics", "Backup Processing"],
 };
 
-export function decide(wai) {
-  if (wai >= 81)
-    return {
-      band: "Excellent",
-      range: "81–100",
-      color: "#2BFF88",
-      cooling: "Normal Liquid Cooling",
-      action: "Continue normal operation",
-      allowedTiers: ["Critical", "Important", "Flexible"],
-      priorityNote: "Critical, Important & Flexible",
-    };
-  if (wai >= 61)
-    return {
-      band: "Good",
-      range: "61–80",
-      color: "#00F0FF",
-      cooling: "Optimized Cooling",
-      action: "Improve efficiency and begin water recycling",
-      allowedTiers: ["Critical", "Important", "Flexible"],
-      priorityNote: "All workloads",
-    };
-  if (wai >= 41)
-    return {
-      band: "Moderate",
-      range: "41–60",
-      color: "#FFD700",
-      cooling: "Hybrid Cooling",
-      action: "Reduce water consumption and postpone some flexible tasks",
-      allowedTiers: ["Critical", "Important"],
-      priorityNote: "Critical & Important",
-    };
-  if (wai >= 21)
-    return {
-      band: "Low",
-      range: "21–40",
-      color: "#FF5C00",
-      cooling: "Dry/Hybrid Cooling",
-      action: "Maximize recycled water use and issue alerts",
-      allowedTiers: ["Critical"],
-      priorityNote: "Critical only",
-    };
-  return {
+const BANDS = [
+  {
+    min: 81,
+    band: "Excellent",
+    range: "81–100",
+    color: "#2BFF88",
+    cooling: "Normal Liquid Cooling",
+    action: "Continue normal operation",
+    allowedTiers: ["Critical", "Important", "Flexible"],
+    priorityNote: "Critical, Important & Flexible",
+  },
+  {
+    min: 61,
+    band: "Good",
+    range: "61–80",
+    color: "#00F0FF",
+    cooling: "Optimized Cooling",
+    action: "Improve efficiency and begin water recycling",
+    allowedTiers: ["Critical", "Important", "Flexible"],
+    priorityNote: "All workloads",
+  },
+  {
+    min: 41,
+    band: "Moderate",
+    range: "41–60",
+    color: "#FFD700",
+    cooling: "Hybrid Cooling",
+    action: "Reduce water consumption and postpone some flexible tasks",
+    allowedTiers: ["Critical", "Important"],
+    priorityNote: "Critical & Important",
+  },
+  {
+    min: 21,
+    band: "Low",
+    range: "21–40",
+    color: "#FF5C00",
+    cooling: "Dry/Hybrid Cooling",
+    action: "Maximize recycled water use and issue alerts",
+    allowedTiers: ["Critical"],
+    priorityNote: "Critical only",
+  },
+  {
+    min: 0,
     band: "Critical",
     range: "0–20",
     color: "#FF2E2E",
@@ -96,7 +97,11 @@ export function decide(wai) {
     action: "Suspend non-essential operations and conserve water",
     allowedTiers: ["Critical"],
     priorityNote: "Emergency services only",
-  };
+  },
+];
+
+export function decide(wai) {
+  return BANDS.find((b) => wai >= b.min) || BANDS[BANDS.length - 1];
 }
 
 export function allowedWorkloadNames(decision) {

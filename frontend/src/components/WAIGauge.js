@@ -2,6 +2,9 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useScenario } from "../context/ScenarioContext";
 
+const GAUGE_SPRING = { type: "spring", stiffness: 90, damping: 18 };
+const VALUE_ANIM = { initial: { scale: 0.9, opacity: 0.6 }, animate: { scale: 1, opacity: 1 } };
+
 // Custom SVG radial gauge with animated stroke.
 export const WAIGauge = () => {
   const { wai, decision } = useScenario();
@@ -52,15 +55,14 @@ export const WAIGauge = () => {
             strokeDasharray={`${arcLen} ${circumference}`}
             initial={false}
             animate={{ strokeDashoffset: arcLen - progress }}
-            transition={{ type: "spring", stiffness: 90, damping: 18 }}
+            transition={GAUGE_SPRING}
             style={{ filter: `drop-shadow(0 0 8px ${decision.color})` }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
           <motion.div
             key={wai}
-            initial={{ scale: 0.9, opacity: 0.6 }}
-            animate={{ scale: 1, opacity: 1 }}
+            {...VALUE_ANIM}
             className="font-mono font-bold text-6xl leading-none"
             style={{ color: decision.color, textShadow: `0 0 20px ${decision.color}88` }}
             data-testid="wai-value"
