@@ -164,6 +164,40 @@ export default function Assistant() {
           onToggleListen={toggleListen}
         />
       </div>
+
+      <article className="mt-8 hx-panel rounded-xl p-6 sm:p-8 space-y-5" data-testid="assistant-article">
+        <h2 className="font-display font-bold text-2xl tracking-tight uppercase">Meet HYDRA</h2>
+        <p className="text-white/70 leading-relaxed">
+          HYDRA is the conversational intelligence behind HydroMind-X — an AI-driven water intelligence system
+          for sustainable data centers built by team AquaNova Trinity. Ask it anything about how the platform
+          works and it responds in plain language, whether you are an investor sizing up the opportunity, a
+          judge probing the technology, or an operator planning a deployment. HYDRA is grounded in the full
+          HydroMind-X knowledge base and can also discuss the wider context of water sustainability,
+          data-center cooling, and climate action.
+        </p>
+        <h3 className="font-display font-semibold text-lg tracking-tight text-hydro-cyan">
+          What you can ask
+        </h3>
+        <p className="text-white/70 leading-relaxed">
+          Try questions like “How is the Water Availability Index calculated?”, “What happens to AI workloads
+          during a drought?”, “Which cooling strategy runs when water is scarce?”, or “Which Sustainable
+          Development Goals does HydroMind-X advance and why?”. HYDRA can explain the difference between
+          critical, important and flexible workloads, walk through the decision-logic table that maps the WAI
+          to a cooling mode, and describe how continuous auditing replaces slow, periodic water reports with
+          live, transparent monitoring.
+        </p>
+        <h3 className="font-display font-semibold text-lg tracking-tight text-hydro-cyan">
+          Why it matters
+        </h3>
+        <p className="text-white/70 leading-relaxed">
+          Modern AI data centers consume enormous amounts of freshwater to stay cool, yet water availability
+          is rarely part of their operational decisions. HydroMind-X changes that by treating every drop as a
+          resource to be measured, recycled and protected. HYDRA makes this vision accessible: instead of
+          reading dashboards, you simply have a conversation, and the assistant translates live sensor data,
+          weather forecasts and risk predictions into clear recommendations. Turn on Voice mode to ask
+          questions out loud and hear spoken answers — ideal for a hands-free demo or presentation.
+        </p>
+      </article>
     </div>
   );
 }

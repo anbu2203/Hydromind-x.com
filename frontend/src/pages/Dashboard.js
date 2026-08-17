@@ -11,7 +11,7 @@ import { AuditReport } from "../components/AuditReport";
 import { ForecastCard } from "../components/ForecastCard";
 
 const HERO_BG =
-  "https://images.unsplash.com/photo-1782155789425-65fb6d8cc8ac?crop=entropy&cs=srgb&fm=jpg&q=85&w=1600";
+  "https://images.unsplash.com/photo-1782155789425-65fb6d8cc8ac?crop=entropy&cs=srgb&fm=jpg&q=70&w=1600";
 
 const RISE = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 const RISE_0 = { ...RISE, transition: { duration: 0.5 } };
@@ -25,7 +25,15 @@ export default function Dashboard() {
       {/* Hero */}
       <section className="relative rounded-2xl overflow-hidden border border-hydro-cyan/15" data-testid="hero">
         <div className="absolute inset-0">
-          <img src={HERO_BG} alt="Futuristic data center" className="w-full h-full object-cover opacity-40" />
+          <img
+            src={HERO_BG}
+            alt="HydroMind-X AI water intelligence dashboard monitoring a sustainable data center cooling system"
+            className="w-full h-full object-cover opacity-40"
+            fetchPriority="high"
+            decoding="async"
+            width="1600"
+            height="900"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-hydro-void via-hydro-void/85 to-hydro-void/30" />
           <div className="absolute inset-0 hx-scanlines opacity-40" />
         </div>
@@ -71,6 +79,22 @@ export default function Dashboard() {
             </Link>
           </motion.div>
         </div>
+      </section>
+
+      <section className="max-w-4xl" data-testid="home-intro">
+        <h2 className="font-display font-bold text-2xl tracking-tight uppercase mb-3">
+          Intelligent Water Management for AI Infrastructure
+        </h2>
+        <p className="text-white/70 leading-relaxed">
+          HydroMind-X is a smart water intelligence and continuous-auditing platform for sustainable data
+          centers. It fuses live IoT sensor readings — temperature, humidity, water level, water flow and
+          reservoir status — with weather forecasts to compute a single, easy-to-read Water Availability Index
+          (WAI) from 0 to 100. Adjust the sliders above to simulate any environmental scenario and watch the
+          index and the AI recommendations update instantly. As water becomes scarce, HydroMind-X
+          automatically selects a more conservative cooling strategy, prioritizes critical workloads such as
+          hospitals and emergency services, delays flexible tasks like model training, and maximizes recycled
+          water use — then captures the whole decision as a downloadable audit report.
+        </p>
       </section>
 
       {/* Simulator + WAI + Decision */}
