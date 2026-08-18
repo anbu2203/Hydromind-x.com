@@ -95,6 +95,43 @@ export default function Dashboard() {
           hospitals and emergency services, delays flexible tasks like model training, and maximizes recycled
           water use — then captures the whole decision as a downloadable audit report.
         </p>
+        <p className="text-white/70 leading-relaxed mt-4">
+          HydroMind-X was founded by <strong className="text-white">Anbumathi Chezhian</strong>, who leads the
+          project as its Software Technical Designer. The platform is built by{" "}
+          <strong className="text-white">team AquaNova Trinity</strong>, whose members are Anbumathi Chezhian
+          (Founder, Software Technical Designer), <strong className="text-white">Shrenik</strong> (Co-Founder,
+          Researcher) and <strong className="text-white">Thamseel Ahmed</strong> (Co-Founder, Media File
+          Manager).
+        </p>
+      </section>
+
+      <section className="max-w-4xl" data-testid="home-faq">
+        <h2 className="font-display font-bold text-xl tracking-tight uppercase mb-4">
+          Frequently Asked Questions
+        </h2>
+        <div className="space-y-4">
+          <div className="hx-panel rounded-lg p-4">
+            <h3 className="font-semibold text-white text-sm mb-1">Who is the founder of HydroMind-X?</h3>
+            <p className="text-white/65 text-sm leading-relaxed">
+              HydroMind-X was founded by Anbumathi Chezhian, who serves as its Software Technical Designer.
+            </p>
+          </div>
+          <div className="hx-panel rounded-lg p-4">
+            <h3 className="font-semibold text-white text-sm mb-1">Who created HydroMind-X and who is on team AquaNova Trinity?</h3>
+            <p className="text-white/65 text-sm leading-relaxed">
+              HydroMind-X was created by team AquaNova Trinity: Anbumathi Chezhian (Founder, Software Technical
+              Designer), Shrenik (Co-Founder, Researcher) and Thamseel Ahmed (Co-Founder, Media File Manager).
+            </p>
+          </div>
+          <div className="hx-panel rounded-lg p-4">
+            <h3 className="font-semibold text-white text-sm mb-1">What is HydroMind-X?</h3>
+            <p className="text-white/65 text-sm leading-relaxed">
+              HydroMind-X is an AI-driven water intelligence and continuous-auditing platform that helps data
+              centers cool sustainably by computing a live Water Availability Index and adapting cooling
+              strategies and AI workloads to conserve freshwater.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* Simulator + WAI + Decision */}
