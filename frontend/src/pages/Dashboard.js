@@ -113,19 +113,41 @@ export default function Dashboard() {
       <AuditReport />
       <SDGBadges />
 
-      <footer className="pt-6 pb-4 text-center font-mono text-[10px] tracking-widest uppercase text-white/30 space-y-2">
-        <div>HydroMind-X · Team AquaNova Trinity · "Every AI decision should consider every drop of water."</div>
-        <div>
-          Created by Anbumathi Chezhian ·{" "}
-          <a
-            href="https://v0-anbumathi-chezhian-2203.vercel.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-hydro-cyan/80 hover:text-hydro-cyan underline underline-offset-2 transition-colors"
-            data-testid="founder-portfolio-link-bottom"
-          >
-            Founder Portfolio ↗
-          </a>
+      <footer className="pt-10 pb-6 border-t border-white/10 mt-4" data-testid="team-footer">
+        <div className="text-center mb-6">
+          <h2 className="font-display font-bold text-lg tracking-tight uppercase text-white/80">
+            Team AquaNova Trinity
+          </h2>
+          <p className="font-mono text-[10px] tracking-widest uppercase text-white/30 mt-1">
+            The people behind HydroMind-X
+          </p>
+        </div>
+        <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto" data-testid="team-members">
+          {[
+            { name: "Anbumathi Chezhian", role: "Founder · Software Technical Designer" },
+            { name: "Shrenik", role: "Co-Founder · Researcher" },
+            { name: "Thamseel Ahmed", role: "Co-Founder · Media File Manager" },
+          ].map((m) => (
+            <li key={m.name} className="hx-panel rounded-lg p-4 text-center" data-testid={`team-member-${m.name.split(" ")[0].toLowerCase()}`}>
+              <div className="font-display font-semibold text-sm text-white">{m.name}</div>
+              <div className="font-mono text-[10px] tracking-wider uppercase text-hydro-cyan/70 mt-1">{m.role}</div>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-8 text-center font-mono text-[10px] tracking-widest uppercase text-white/30 space-y-2">
+          <div>HydroMind-X · Team AquaNova Trinity · "Every AI decision should consider every drop of water."</div>
+          <div>
+            Created by Anbumathi Chezhian ·{" "}
+            <a
+              href="https://v0-anbumathi-chezhian-2203.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-hydro-cyan/80 hover:text-hydro-cyan underline underline-offset-2 transition-colors"
+              data-testid="founder-portfolio-link-bottom"
+            >
+              Founder Portfolio ↗
+            </a>
+          </div>
         </div>
       </footer>
     </div>
