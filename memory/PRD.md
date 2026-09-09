@@ -35,10 +35,16 @@ HydroMind-X: AI-Driven Water Intelligence System for Sustainable Data Centers (t
 - Mobile fix: nav bar now horizontally scrollable (no overflow at 390px).
 - Verified: curl SSE for gpt-5.5 (hospital stream, universal classify+gate) and browser test of switcher on `/proto/chatbot` (desktop + mobile).
 
+## Implemented (2026-06-09b) — Auto Resume + Drought demo
+- **Auto Resume**: gated protoV1 requests are queued client-side with their tier threshold. A queue banner (`proto-queue-banner`) shows the count + required WAI, the gated bubble is badged "Queued · resumes at WAI ≥ N", and the moment WAI recovers the request auto re-sends and the new answer is badged "Auto-resumed". Queue clears on mode change or via "Clear queue".
+- **Drought Scenario button** on every protoV1 page: `DROUGHT_INPUTS` preset in `lib/hydro.js` lands WAI at exactly 25 (Low band) via new `applyPreset()` in ScenarioContext; "Restore water" resets to 74. Proves Hospital (Critical) keeps answering while Bank/Chatbot pause.
+- **Bug fixed**: protoV1 nav dropdown was dead — caused by an `overflow-x-auto` class added to `<nav>` (clipped the absolute menu). Reverted; mobile width solved instead via tighter paddings + hidden logo tagline. Menu now `z-50` with solid `bg-hydro-panel/95` backdrop.
+- Also silenced Recharts width/height(-1) warning (minHeight on ForecastCard ResponsiveContainer).
+- Verified by testing agent (`/app/test_reports/iteration_4.json`): 100% of 6 frontend flows pass (dropdown desktop+mobile, drought, auto-resume on chatbot & bank, engine switcher persistence, dashboard/assistant regression).
+
 ## Backlog / Remaining
-- P1: Live WAI mini-slider overlay on protoV1 pages (test gating mid-conversation).
-- P1: Auto-retry gated requests when WAI rises above the tier threshold.
-- P2: Hospital "Drought Scenario" preset button (drops WAI to 25).
+- P1: Live WAI mini-slider overlay on protoV1 pages (throttle gating mid-conversation without leaving the page).
+- P2: Side-by-side Gemini vs ChatGPT answer comparison for one prompt.
 - P2: Tier distribution chart (% of protoV1 traffic by tier today).
 
 ## Backlog / Remaining (P2)

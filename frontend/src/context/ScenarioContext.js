@@ -13,6 +13,8 @@ export function ScenarioProvider({ children }) {
 
   const reset = useCallback(() => setInputs(DEFAULT_INPUTS), []);
 
+  const applyPreset = useCallback((preset) => setInputs({ ...DEFAULT_INPUTS, ...preset }), []);
+
   const derived = useMemo(() => {
     const wai = computeWAI(inputs);
     const decision = decide(wai);
@@ -20,8 +22,8 @@ export function ScenarioProvider({ children }) {
   }, [inputs]);
 
   const value = useMemo(
-    () => ({ inputs, setInput, reset, ...derived }),
-    [inputs, setInput, reset, derived]
+    () => ({ inputs, setInput, reset, applyPreset, ...derived }),
+    [inputs, setInput, reset, applyPreset, derived]
   );
 
   return (

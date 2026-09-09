@@ -70,23 +70,23 @@ export const Nav = () => {
           Founder Portfolio ↗
         </a>
       </div>
-      <div className="max-w-[1400px] mx-auto px-5 h-16 flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2.5 group" data-testid="brand-logo">
+      <div className="max-w-[1400px] mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2 sm:gap-4">
+        <Link to="/" className="flex items-center gap-2.5 group min-w-0" data-testid="brand-logo">
           <div className="relative">
             <Droplets className="w-7 h-7 text-hydro-cyan text-glow-cyan" strokeWidth={2.2} />
             <span className="absolute inset-0 animate-pulse-glow" />
           </div>
-          <div className="leading-none">
-            <div className="font-display font-black text-lg tracking-tighter uppercase">
+          <div className="leading-none min-w-0">
+            <div className="font-display font-black text-base sm:text-lg tracking-tighter uppercase whitespace-nowrap">
               Hydro<span className="text-hydro-cyan">Mind</span>-X
             </div>
-            <div className="font-mono text-[9px] tracking-[0.25em] text-hydro-cyan/70 uppercase">
+            <div className="font-mono text-[9px] tracking-[0.25em] text-hydro-cyan/70 uppercase hidden sm:block">
               AquaNova Trinity
             </div>
           </div>
         </Link>
 
-        <nav className="flex items-center gap-1 overflow-x-auto max-w-full hx-noscroll">
+        <nav className="flex items-center gap-1 shrink-0">
           {links.map((l) => (
             <NavLink
               key={l.to}
@@ -94,7 +94,7 @@ export const Nav = () => {
               end={l.end}
               data-testid={l.testid}
               className={({ isActive }) =>
-                `flex items-center gap-2 px-3.5 py-2 rounded-md font-mono text-xs uppercase tracking-wider transition-colors ${
+                `flex items-center gap-2 px-2.5 sm:px-3.5 py-2 rounded-md font-mono text-xs uppercase tracking-wider transition-colors ${
                   isActive
                     ? "bg-hydro-cyan/10 text-hydro-cyan border border-hydro-cyan/30"
                     : "text-white/60 hover:text-white border border-transparent"
@@ -114,7 +114,7 @@ export const Nav = () => {
               aria-haspopup="menu"
               aria-expanded={protoOpen}
               data-testid="nav-proto-trigger"
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-md font-mono text-xs uppercase tracking-wider transition-colors ${
+              className={`flex items-center gap-2 px-2.5 sm:px-3.5 py-2 rounded-md font-mono text-xs uppercase tracking-wider transition-colors ${
                 isProtoActive || protoOpen
                   ? "bg-hydro-cyan/10 text-hydro-cyan border border-hydro-cyan/30"
                   : "text-white/60 hover:text-white border border-transparent"
@@ -131,7 +131,7 @@ export const Nav = () => {
               <div
                 role="menu"
                 data-testid="nav-proto-menu"
-                className="absolute right-0 mt-2 w-72 hx-glass border border-hydro-cyan/25 rounded-xl overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,240,255,0.35)]"
+                className="absolute right-0 mt-2 w-72 z-50 rounded-xl overflow-hidden border border-hydro-cyan/25 bg-hydro-panel/95 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,240,255,0.35)]"
               >
                 <div className="px-4 py-3 border-b border-white/10 bg-hydro-cyan/5">
                   <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-hydro-cyan/80">

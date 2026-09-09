@@ -3,9 +3,10 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Cpu, HeartPulse, Landmark, Sparkles, Bot, User, Send, ShieldCheck, ShieldAlert,
-  Droplets, Zap, Clock, ArrowRight, Brain,
+  Droplets, Zap, Clock, ArrowRight, Brain, CloudRain, RotateCcw, Hourglass,
 } from "lucide-react";
 import { useScenario } from "../context/ScenarioContext";
+import { DROUGHT_INPUTS } from "../lib/hydro";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -200,7 +201,23 @@ const Bubble = ({ m, streamingLast }) => {
             )}
             {m.gated && (
               <span className="font-mono text-[9px] uppercase tracking-widest text-hydro-orange flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Delayed
+                <Clock className="w-3 h-3" /> {m.resolved ? "Resumed" : "Delayed"}
+              </span>
+            )}
+            {m.gated && !m.resolved && m.queuedMinWai != null && (
+              <span
+                className="font-mono text-[9px] uppercase tracking-widest text-hydro-cyan flex items-center gap-1"
+                data-testid="proto-msg-queued"
+              >
+                <Hourglass className="w-3 h-3" /> Queued · resumes at WAI ≥ {m.queuedMinWai}
+              </span>
+            )}
+            {m.resumed && (
+              <span
+                className="font-mono text-[9px] uppercase tracking-widest text-hydro-green flex items-center gap-1"
+                data-testid="proto-msg-resumed"
+              >
+                <RotateCcw className="w-3 h-3" /> Auto-resumed
               </span>
             )}
           </div>
@@ -220,7 +237,7 @@ const Bubble = ({ m, streamingLast }) => {
 export default function ProtoV1() {
   const { mode = "universal" } = useParams();
   const cfg = PROTO_MODES[mode];
-  const { wai, decision } = useScenario();
+  const { wai, decision, applyPreset, reset } = useScenario();
 
   const [sessionId, setSessionId] = useState(() => `${mode}-${genId()}`);
   const [messages, setMessages] = useState([]);
@@ -229,6 +246,7 @@ export default function ProtoV1() {
   const [engine, setEngine] = useState(
     () => localStorage.getItem("hmx-proto-engine") || "gemini"
   );
+  const [queue, setQueue] = useState([]);
   const streamingRef = useRef(false);
   const scrollRef = useRef(null);
 
@@ -241,6 +259,7 @@ export default function ProtoV1() {
     setSessionId(`${mode}-${genId()}`);
     setMessages([]);
     setInput("");
+    setQueue([]);
   }, [mode]);
 
   const allowed = useMemo(() => (cfg ? wai >= cfg.minWai : true), [wai, cfg]);
@@ -255,15 +274,15 @@ export default function ProtoV1() {
   }, []);
 
   const send = useCallback(
-    async (text) => {
+    async (text, opts = {}) => {
       const q = text.trim();
       if (!q || streamingRef.current || !cfg) return;
       setInput("");
       const assistantId = genId();
       setMessages((m) => [
         ...m,
-        { id: genId(), role: "user", content: q },
-        { id: assistantId, role: "assistant", content: "", tier: null, gated: false },
+        ...(opts.resume ? [] : [{ id: genId(), role: "user", content: q }]),
+        { id: assistantId, role: "assistant", content: "", tier: null, gated: false, resumed: !!opts.resume },
       ]);
       streamingRef.current = true;
       setStreaming(true);
@@ -298,7 +317,17 @@ export default function ProtoV1() {
             } else if (payload.gated) {
               currentTier = payload.tier;
               assistantText = payload.delta || "";
-              replaceLast({ tier: currentTier, gated: true, content: assistantText, engineLabel: null });
+              replaceLast({
+                tier: currentTier,
+                gated: true,
+                content: assistantText,
+                engineLabel: null,
+                queuedMinWai: payload.min_wai,
+              });
+              setQueue((qs) => [
+                ...qs,
+                { id: genId(), text: q, tier: payload.tier, minWai: payload.min_wai, bubbleId: assistantId },
+              ]);
             } else if (payload.delta) {
               assistantText += payload.delta;
               replaceLast({ content: assistantText });
@@ -316,6 +345,16 @@ export default function ProtoV1() {
     },
     [sessionId, mode, wai, cfg, replaceLast, engine]
   );
+
+  // Auto-resume: the moment WAI recovers above a queued request's tier threshold, re-send it.
+  useEffect(() => {
+    if (streaming || queue.length === 0) return;
+    const next = queue.find((i) => wai >= i.minWai);
+    if (!next) return;
+    setQueue((qs) => qs.filter((i) => i.id !== next.id));
+    setMessages((ms) => ms.map((m) => (m.id === next.bubbleId ? { ...m, resolved: true } : m)));
+    send(next.text, { resume: true });
+  }, [wai, streaming, queue, send]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -371,9 +410,59 @@ export default function ProtoV1() {
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <EngineSwitcher value={engine} onChange={setEngine} disabled={streaming} />
         <span className="font-mono text-[10px] uppercase tracking-widest text-white/40">
-          Engine · {ENGINES[engine].label} · switch anytime to compare
+          Engine · {ENGINES[engine].label}
         </span>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={() => applyPreset(DROUGHT_INPUTS)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-hydro-orange/50 bg-hydro-orange/10 text-hydro-orange font-mono text-[10px] uppercase tracking-widest hover:bg-hydro-orange/20 transition-colors"
+            data-testid="proto-drought-btn"
+          >
+            <CloudRain className="w-3.5 h-3.5" />
+            Drought scenario
+          </button>
+          <button
+            type="button"
+            onClick={reset}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 text-white/55 font-mono text-[10px] uppercase tracking-widest hover:text-hydro-cyan hover:border-hydro-cyan/40 transition-colors"
+            data-testid="proto-restore-btn"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Restore water
+          </button>
+        </div>
       </div>
+
+      {queue.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 rounded-xl border border-hydro-cyan/30 bg-hydro-cyan/5 px-4 py-3 flex items-center gap-3 flex-wrap"
+          data-testid="proto-queue-banner"
+        >
+          <Hourglass className="w-4 h-4 text-hydro-cyan animate-pulse-glow shrink-0" />
+          <span className="text-sm text-white/80">
+            <span className="font-mono text-hydro-cyan" data-testid="proto-queue-count">
+              {queue.length}
+            </span>{" "}
+            request{queue.length > 1 ? "s" : ""} queued — HydroMind-X will answer automatically once
+            WAI reaches{" "}
+            <span className="font-mono text-hydro-cyan">
+              {Math.min(...queue.map((i) => i.minWai))}
+            </span>
+            .
+          </span>
+          <button
+            type="button"
+            onClick={() => setQueue([])}
+            className="ml-auto font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/80 transition-colors"
+            data-testid="proto-queue-clear-btn"
+          >
+            Clear queue
+          </button>
+        </motion.div>
+      )}
 
       {/* Info banner */}
       <motion.div

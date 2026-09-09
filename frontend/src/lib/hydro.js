@@ -18,6 +18,18 @@ export const DEFAULT_INPUTS = {
   weather: "Clear",
 };
 
+// One-tap demo scenario: severe drought — lands WAI in the Low band (~25) where
+// only Critical (life-safety) workloads are allowed to keep running.
+export const DROUGHT_INPUTS = {
+  temperature: 36,
+  humidity: 30,
+  waterLevel: 40,
+  waterFlow: 70,
+  reservoir: 40,
+  coolingDemand: 70,
+  weather: "Drought",
+};
+
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
 export function computeWAI(inp) {

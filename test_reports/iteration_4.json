@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend-only regression per E1 request. Verified: (1) BUG FIX — protoV1 nav dropdown now opens on / (Dashboard), /cooling, and /proto/universal at desktop 1920x1080 (menu bbox {x:982,y:82,w:288,h:295}) with solid backdrop-blur bg and z-50, is fully readable (not clipped), closes on outside click, closes on ESC, closes when item is clicked, and navigates to /proto/bank when Bank AI is clicked. Also works at mobile 390x844 (menu opens at x:89,y:105,w:288,h:295 within viewport). (2) Drought Demo Button on /proto/hospital drops nav WAI chip to 25 (matches DROUGHT_INPUTS preset), status pill still reads 'Allowed' (Critical minWai=0). Sending 'Adult CPR compression rate and depth?' at WAI 25 streamed a real Gemini 3 Flash clinical answer (100–120 bpm, 2 inch depth, 30:2 ratio) — NOT gated. 'Restore water' returns WAI to 74. (3) Auto-Resume on /proto/chatbot (Flexible, minWai 61): drought -> WAI 25 -> queued gated bubble with data-testid proto-msg-queued + proto-queue-banner (count=1); clicking Restore water raised WAI to 74 and auto-fired the queued prompt — new assistant bubble with proto-msg-resumed 'AUTO-RESUMED' badge streamed the SQL/bar joke. Banner disappeared. No double-send or infinite-loop observed (queue emptied cleanly, streamingRef gates re-entry). (4) Auto-Resume on /proto/bank (Important, minWai 41) — same flow with 'What is compound interest…' produced a queued bubble then an AUTO-RESUMED Gemini answer with a compound-interest table. (5) Engine switcher on /proto/chatbot at WAI 74: ChatGPT toggle produced a bubble badged 'CHATGPT (GPT-5.5)'; toggling back to Gemini produced a bubble badged 'GEMINI 3 FLASH'; after full page reload, localStorage hmx-proto-engine='gemini' and header label reads 'ENGINE · GEMINI 3 FLASH'. (6) Regression — Dashboard sliders still recompute WAI live (nudged temperature slider: 74 -> 70). Assistant page /assistant streamed a grounded HYDRA reply to 'Say hello in one short sentence.' with no errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard", "issues": ["Recharts console warning: 'The width(-1) and height(-1) of chart should be greater than 0…' — indicates a ResponsiveContainer child without minWidth/minHeight or being measured before layout settles. Cosmetic only, chart still renders. Consider setting minHeight on the chart container."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_4.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ProtoV1.js auto-resume useEffect (lines 350-357): the queue-picking logic relies on `wai` value from ScenarioContext changing. streamingRef prevents concurrent sends and the effect filters the item out of queue before calling send(). Verified no infinite resend loop in practice. Edge case worth noting: if multiple items with different minWai are queued and wai rises to satisfy only some, only one is dequeued per effect tick — because effect re-fires when queue changes, remaining items will drain naturally; behavior is correct.",
+    "ProtoV1.js send() (lines 276-347): message state uses replaceLast which always targets messages.length-1. If a user manages to send another message during the tiny window between setMessages append and the fetch, races could touch the wrong bubble. Guarded by streamingRef so this is fine, but a small refactor to update by assistantId would be more robust.",
+    "Nav.js dropdown: menu correctly re-hidden on route change via useEffect on location.pathname. Good.",
+    "Recharts ResponsiveContainer emits width(-1)/height(-1) warning on Dashboard load — add minHeight to its parent to silence."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per E1)", "frontend": "100% (all 6 requested flows pass)"},
+  "test_credentials": "N/A - no auth",
+  "seed_data_creation": "Created a few proto/* chat sessions (hospital, chatbot, bank) via SSE endpoint during testing.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Nav dropdown bug is confirmed fixed at both desktop 1920x1080 and mobile 390x844. Auto-resume is stable end-to-end: gated bubble gets proto-msg-queued, proto-queue-banner shows count, restore -> auto-fires, new bubble gets proto-msg-resumed AUTO-RESUMED badge, banner disappears. Engine switcher persists via localStorage key hmx-proto-engine. Only remaining console noise is a Recharts responsive-container width/height warning on Dashboard.",
+  "rca of the issue": "N/A — all target features working. Dropdown bug (previously caused by overflow-x-auto on <nav>) is confirmed fixed by removal; Nav.js line 89 now uses `flex items-center gap-1 shrink-0` without overflow clipping. Menu uses absolute right-0 mt-2 z-50 with bg-hydro-panel/95 backdrop-blur-xl — no clipping observed."
+}
