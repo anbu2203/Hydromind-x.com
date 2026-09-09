@@ -86,7 +86,7 @@ export const Nav = () => {
           </div>
         </Link>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 overflow-x-auto max-w-full hx-noscroll">
           {links.map((l) => (
             <NavLink
               key={l.to}

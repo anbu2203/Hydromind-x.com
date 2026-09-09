@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Cpu, HeartPulse, Landmark, Sparkles, Bot, User, Send, ShieldCheck, ShieldAlert,
-  Droplets, Zap, Clock, ArrowRight,
+  Droplets, Zap, Clock, ArrowRight, Brain,
 } from "lucide-react";
 import { useScenario } from "../context/ScenarioContext";
 
@@ -90,6 +90,40 @@ const TIER_COLOR = {
 
 const genId = () => Math.random().toString(36).slice(2);
 
+export const ENGINES = {
+  gemini: { key: "gemini", label: "Gemini 3 Flash", short: "Gemini", accent: "#00F0FF" },
+  chatgpt: { key: "chatgpt", label: "ChatGPT · gpt-5.5", short: "ChatGPT", accent: "#4ADE80" },
+};
+
+const EngineSwitcher = ({ value, onChange, disabled }) => (
+  <div
+    className="inline-flex items-center gap-1 p-1 rounded-full border border-white/10 bg-hydro-void/60"
+    data-testid="proto-engine-switcher"
+  >
+    <Brain className="w-3.5 h-3.5 text-white/40 ml-2 mr-0.5" />
+    {Object.values(ENGINES).map((e) => {
+      const active = e.key === value;
+      return (
+        <button
+          key={e.key}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(e.key)}
+          className="px-3 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-40"
+          style={
+            active
+              ? { color: e.accent, background: e.accent + "1A", border: `1px solid ${e.accent}55` }
+              : { color: "rgba(255,255,255,0.45)", border: "1px solid transparent" }
+          }
+          data-testid={`proto-engine-${e.key}`}
+        >
+          {e.short}
+        </button>
+      );
+    })}
+  </div>
+);
+
 // --------- Small components ---------
 const StatusPill = ({ allowed, wai, minWai, band, decisionColor }) => (
   <div
@@ -148,9 +182,22 @@ const Bubble = ({ m, streamingLast }) => {
               : "hx-panel text-white/85"
         }`}
       >
-        {m.tier && (
-          <div className="mb-1.5 flex items-center gap-2">
-            <TierBadge tier={m.tier} />
+        {(m.tier || m.engineLabel) && (
+          <div className="mb-1.5 flex items-center gap-2 flex-wrap">
+            {m.tier && <TierBadge tier={m.tier} />}
+            {m.engineLabel && !isUser && (
+              <span
+                className="font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded border"
+                style={{
+                  color: m.engineAccent,
+                  borderColor: m.engineAccent + "55",
+                  background: m.engineAccent + "12",
+                }}
+                data-testid="proto-msg-engine"
+              >
+                {m.engineLabel}
+              </span>
+            )}
             {m.gated && (
               <span className="font-mono text-[9px] uppercase tracking-widest text-hydro-orange flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Delayed
@@ -179,8 +226,15 @@ export default function ProtoV1() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [engine, setEngine] = useState(
+    () => localStorage.getItem("hmx-proto-engine") || "gemini"
+  );
   const streamingRef = useRef(false);
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem("hmx-proto-engine", engine);
+  }, [engine]);
 
   // Reset session when mode changes
   useEffect(() => {
@@ -220,7 +274,7 @@ export default function ProtoV1() {
         const res = await fetch(`${API}/proto/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id: sessionId, message: q, mode, wai }),
+          body: JSON.stringify({ session_id: sessionId, message: q, mode, wai, engine }),
         });
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -236,11 +290,15 @@ export default function ProtoV1() {
             const payload = JSON.parse(line.slice(6));
             if (payload.tier && !payload.delta && !payload.gated) {
               currentTier = payload.tier;
-              replaceLast({ tier: currentTier });
+              replaceLast({
+                tier: currentTier,
+                engineLabel: payload.engine_label || ENGINES[engine].label,
+                engineAccent: ENGINES[payload.engine || engine]?.accent || "#00F0FF",
+              });
             } else if (payload.gated) {
               currentTier = payload.tier;
               assistantText = payload.delta || "";
-              replaceLast({ tier: currentTier, gated: true, content: assistantText });
+              replaceLast({ tier: currentTier, gated: true, content: assistantText, engineLabel: null });
             } else if (payload.delta) {
               assistantText += payload.delta;
               replaceLast({ content: assistantText });
@@ -256,7 +314,7 @@ export default function ProtoV1() {
         setStreaming(false);
       }
     },
-    [sessionId, mode, wai, cfg, replaceLast]
+    [sessionId, mode, wai, cfg, replaceLast, engine]
   );
 
   useEffect(() => {
@@ -308,6 +366,13 @@ export default function ProtoV1() {
           band={band}
           decisionColor={decision?.color || "#00F0FF"}
         />
+      </div>
+
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <EngineSwitcher value={engine} onChange={setEngine} disabled={streaming} />
+        <span className="font-mono text-[10px] uppercase tracking-widest text-white/40">
+          Engine · {ENGINES[engine].label} · switch anytime to compare
+        </span>
       </div>
 
       {/* Info banner */}

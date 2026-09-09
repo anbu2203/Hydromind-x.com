@@ -117,6 +117,17 @@ class AuditReport(BaseModel):
     allowed_workloads: List[str]
 
 
+def _friendly_llm_error(e: Exception) -> str:
+    msg = str(e)
+    if "Budget has been exceeded" in msg or "RateLimitError" in msg:
+        return (
+            "AI credits exhausted. HydroMind-X could not reach the model because the "
+            "Universal LLM key has run out of budget. Add balance under "
+            "Profile \u2192 Manage plan \u2192 Universal Key \u2192 Add Balance, then retry."
+        )
+    return f"AI service error: {msg}"
+
+
 @api_router.get("/")
 async def root():
     return {"message": "HydroMind-X API online", "motto": "Every AI decision should consider every drop of water."}
@@ -148,7 +159,7 @@ async def chat(req: ChatRequest):
                     break
         except Exception as e:
             logger.exception("chat stream error")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'error': _friendly_llm_error(e)})}\n\n"
         await db.chat_messages.insert_one({
             "session_id": req.session_id,
             "role": "assistant",
@@ -199,7 +210,7 @@ async def forecast_advisory(req: ForecastRequest):
                 break
     except Exception as e:
         logger.exception("forecast advisory error")
-        return {"advisory": f"Forecast advisory unavailable: {e}"}
+        return {"advisory": _friendly_llm_error(e)}
     return {"advisory": text.strip()}
 
 
@@ -293,14 +304,21 @@ def _band_for(wai: int) -> str:
     return "Critical"
 
 
+PROTO_ENGINES = {
+    "gemini": {"provider": "gemini", "model": "gemini-3-flash-preview", "label": "Gemini 3 Flash"},
+    "chatgpt": {"provider": "openai", "model": "gpt-5.5", "label": "ChatGPT (gpt-5.5)"},
+}
+
+
 class ProtoChatRequest(BaseModel):
     session_id: str
     message: str
     mode: str  # universal | hospital | bank | chatbot
     wai: int
+    engine: str = "gemini"  # gemini | chatgpt
 
 
-async def _classify_universal(text: str) -> str:
+async def _classify_universal(text: str, engine: str = "gemini") -> str:
     """Classify a prompt into Critical | Important | Flexible using the LLM."""
     classifier_prompt = (
         "Classify the following user request into EXACTLY ONE of these three data-center workload tiers, "
@@ -318,7 +336,7 @@ async def _classify_universal(text: str) -> str:
         api_key=EMERGENT_LLM_KEY,
         session_id=f"classify-{uuid.uuid4().hex[:8]}",
         system_message="You are a strict single-word classifier. Reply with exactly one word.",
-    ).with_model("gemini", "gemini-3-flash-preview")
+    ).with_model(PROTO_ENGINES[engine]["provider"], PROTO_ENGINES[engine]["model"])
     out = ""
     try:
         async for event in chat_client.stream_message(UserMessage(text=classifier_prompt)):
@@ -338,14 +356,16 @@ async def proto_chat(req: ProtoChatRequest):
     mode_cfg = PROTO_MODES.get(req.mode)
     if not mode_cfg:
         return {"error": f"Unknown mode '{req.mode}'"}
+    engine = req.engine if req.engine in PROTO_ENGINES else "gemini"
+    eng_cfg = PROTO_ENGINES[engine]
 
     async def event_generator():
         # 1) Determine tier
         if mode_cfg["tier"] is None:
-            tier = await _classify_universal(req.message)
+            tier = await _classify_universal(req.message, engine)
         else:
             tier = mode_cfg["tier"]
-        yield f"data: {json.dumps({'tier': tier})}\n\n"
+        yield f"data: {json.dumps({'tier': tier, 'engine': engine, 'engine_label': eng_cfg['label']})}\n\n"
 
         # 2) Gate against WAI
         min_wai = TIER_MIN_WAI[tier]
@@ -360,7 +380,7 @@ async def proto_chat(req: ProtoChatRequest):
             yield f"data: {json.dumps({'gated': True, 'tier': tier, 'min_wai': min_wai, 'wai': req.wai, 'band': band, 'delta': reason})}\n\n"
             await db.proto_messages.insert_one({
                 "session_id": req.session_id, "mode": req.mode, "tier": tier,
-                "wai": req.wai, "gated": True, "role": "assistant", "content": reason,
+                "wai": req.wai, "engine": engine, "gated": True, "role": "assistant", "content": reason,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
             yield f"data: {json.dumps({'done': True})}\n\n"
@@ -369,16 +389,16 @@ async def proto_chat(req: ProtoChatRequest):
         # 3) Persist user turn
         await db.proto_messages.insert_one({
             "session_id": req.session_id, "mode": req.mode, "tier": tier,
-            "wai": req.wai, "gated": False, "role": "user", "content": req.message,
+            "wai": req.wai, "engine": engine, "gated": False, "role": "user", "content": req.message,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
         # 4) Stream persona response
         chat_client = LlmChat(
             api_key=EMERGENT_LLM_KEY,
-            session_id=req.session_id,
+            session_id=f"{req.session_id}-{engine}",
             system_message=mode_cfg["system"],
-        ).with_model("gemini", "gemini-3-flash-preview")
+        ).with_model(eng_cfg["provider"], eng_cfg["model"])
         full = ""
         try:
             async for event in chat_client.stream_message(UserMessage(text=req.message)):
@@ -389,11 +409,11 @@ async def proto_chat(req: ProtoChatRequest):
                     break
         except Exception as e:
             logger.exception("proto chat stream error")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'error': _friendly_llm_error(e)})}\n\n"
 
         await db.proto_messages.insert_one({
             "session_id": req.session_id, "mode": req.mode, "tier": tier,
-            "wai": req.wai, "gated": False, "role": "assistant", "content": full,
+            "wai": req.wai, "engine": engine, "gated": False, "role": "assistant", "content": full,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
         yield f"data: {json.dumps({'done': True})}\n\n"
