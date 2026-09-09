@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   Droplets, LayoutDashboard, Snowflake, MessageSquareText,
-  FlaskConical, Cpu, HeartPulse, Landmark, Sparkles, ChevronDown,
+  FlaskConical, Cpu, HeartPulse, Landmark, Sparkles, ChevronDown, Play,
 } from "lucide-react";
 import { useScenario } from "../context/ScenarioContext";
 
@@ -50,7 +50,7 @@ export const Nav = () => {
 
   useEffect(() => {
     setProtoOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   return (
     <header className="sticky top-0 z-50 hx-glass border-b border-white/10">
@@ -186,6 +186,21 @@ export const Nav = () => {
                     </li>
                   ))}
                 </ul>
+                <Link
+                  to="/proto/universal?pitch=1"
+                  data-testid="nav-proto-pitch"
+                  className="flex items-center gap-3 px-4 py-3 border-t border-white/10 bg-hydro-cyan/5 text-hydro-cyan hover:bg-hydro-cyan/15 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-md flex items-center justify-center border border-hydro-cyan/50 bg-hydro-cyan/10 shrink-0">
+                    <Play className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">Pitch Mode</div>
+                    <div className="text-[11px] text-white/50 truncate">
+                      Guided demo · drought → pause → auto-resume
+                    </div>
+                  </div>
+                </Link>
               </div>
             )}
           </div>

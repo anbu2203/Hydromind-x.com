@@ -1,0 +1,18 @@
+{
+  "summary": "Frontend-only testing of protoV1 Pitch Mode feature and regressions. All 8 test scenarios PASSED. Pitch Mode via button ran the full 7-step scripted demo in ~45s with exactly 3 user bubbles (no duplicate/StrictMode double-run), WAI dropped to 25 at step 4, joke request paused with queued badge + queue banner, first-aid critical request answered at WAI 25, WAI restored to 74 and queued joke AUTO-RESUMED with the resumed badge, caption ended at Step 7/7 with the closing line. Nav 'Pitch Mode' link auto-started the demo exactly once with the ?pitch=1 query param cleaned from the URL. End-demo control fully stops the script (no further prompts or WAI changes in 15s post-stop). Pitch button only appears on /proto/universal (not on /proto/bank). Navigating away mid-demo removes the narration. Regression on /proto/chatbot: drought preset gates flexible request (waiRef fix confirmed), restore water triggers auto-resume. Nav dropdown opens/closes (Escape works) and all 4 persona links present. Engine switcher (chatgpt/gemini) both rendered.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ProtoV1.js is 743 lines - consider splitting Bubble/EngineSwitcher/StatusPill and pitch/queue logic into separate modules for maintainability (soft, not blocking).",
+    "runPitch() calls reset() twice (at start and at step 7). Intentional but worth a code comment."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pitch Mode verified end-to-end. StrictMode double-run bug is FIXED via pitchRef token guard. All previous features (nav dropdown, drought/restore, auto-resume, engine switcher) still pass regression. Full pitch demo takes ~42s of real LLM streaming; poll with 2s intervals up to 100s.",
+  "rca of the issue": "N/A - no issues found in this iteration."
+}

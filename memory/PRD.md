@@ -42,6 +42,13 @@ HydroMind-X: AI-Driven Water Intelligence System for Sustainable Data Centers (t
 - Also silenced Recharts width/height(-1) warning (minHeight on ForecastCard ResponsiveContainer).
 - Verified by testing agent (`/app/test_reports/iteration_4.json`): 100% of 6 frontend flows pass (dropdown desktop+mobile, drought, auto-resume on chatbot & bank, engine switcher persistence, dashboard/assistant regression).
 
+## Implemented (2026-06-09c) — Pitch Mode
+- **Pitch Mode**: one-tap 7-step guided demo on `/proto/universal` (`runPitch()` in ProtoV1.js). Auto-plays: healthy WAI 74 → critical prompt answered → drought crashes WAI to 25 → flexible prompt PAUSED + queued → a critical prompt still answers during the drought → water restored → the queued prompt auto-resumes itself → closing line. Narration panel with step progress dots + "End demo" stop control.
+- Launchable from the "Pitch mode" button on the Universal page or the "Pitch Mode" entry in the protoV1 nav dropdown (`/proto/universal?pitch=1`, param auto-cleaned).
+- Fixed: React StrictMode double-invoked the autostart effect and ran the script twice concurrently — guarded with a run token in `pitchRef` plus an `ask()` helper that waits for the stream to clear.
+- Fixed: `send()` captured a stale WAI in its closure (would have skipped gating right after the drought preset) — now reads `waiRef.current`.
+- Verified by testing agent (`/app/test_reports/iteration_5.json`): 8/8 scenarios pass, 100% frontend, exactly one run, stop control works, all prior features regression-clean.
+
 ## Backlog / Remaining
 - P1: Live WAI mini-slider overlay on protoV1 pages (throttle gating mid-conversation without leaving the page).
 - P2: Side-by-side Gemini vs ChatGPT answer comparison for one prompt.

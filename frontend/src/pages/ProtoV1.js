@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Navigate, Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Cpu, HeartPulse, Landmark, Sparkles, Bot, User, Send, ShieldCheck, ShieldAlert,
-  Droplets, Zap, Clock, ArrowRight, Brain, CloudRain, RotateCcw, Hourglass,
+  Droplets, Zap, Clock, ArrowRight, Brain, CloudRain, RotateCcw, Hourglass, Play, Square,
 } from "lucide-react";
 import { useScenario } from "../context/ScenarioContext";
 import { DROUGHT_INPUTS } from "../lib/hydro";
@@ -90,6 +90,8 @@ const TIER_COLOR = {
 };
 
 const genId = () => Math.random().toString(36).slice(2);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const PITCH_TOTAL = 7;
 
 export const ENGINES = {
   gemini: { key: "gemini", label: "Gemini 3 Flash", short: "Gemini", accent: "#00F0FF" },
@@ -238,6 +240,7 @@ export default function ProtoV1() {
   const { mode = "universal" } = useParams();
   const cfg = PROTO_MODES[mode];
   const { wai, decision, applyPreset, reset } = useScenario();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [sessionId, setSessionId] = useState(() => `${mode}-${genId()}`);
   const [messages, setMessages] = useState([]);
@@ -247,8 +250,20 @@ export default function ProtoV1() {
     () => localStorage.getItem("hmx-proto-engine") || "gemini"
   );
   const [queue, setQueue] = useState([]);
+  const [pitch, setPitch] = useState({ active: false, step: 0, caption: "" });
   const streamingRef = useRef(false);
+  const pitchRef = useRef(false);
+  const queueRef = useRef([]);
+  const waiRef = useRef(wai);
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    waiRef.current = wai;
+  }, [wai]);
+
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
 
   useEffect(() => {
     localStorage.setItem("hmx-proto-engine", engine);
@@ -260,6 +275,8 @@ export default function ProtoV1() {
     setMessages([]);
     setInput("");
     setQueue([]);
+    pitchRef.current = false;
+    setPitch({ active: false, step: 0, caption: "" });
   }, [mode]);
 
   const allowed = useMemo(() => (cfg ? wai >= cfg.minWai : true), [wai, cfg]);
@@ -293,7 +310,7 @@ export default function ProtoV1() {
         const res = await fetch(`${API}/proto/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id: sessionId, message: q, mode, wai, engine }),
+          body: JSON.stringify({ session_id: sessionId, message: q, mode, wai: waiRef.current, engine }),
         });
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -343,7 +360,7 @@ export default function ProtoV1() {
         setStreaming(false);
       }
     },
-    [sessionId, mode, wai, cfg, replaceLast, engine]
+    [sessionId, mode, cfg, replaceLast, engine]
   );
 
   // Auto-resume: the moment WAI recovers above a queued request's tier threshold, re-send it.
@@ -359,6 +376,88 @@ export default function ProtoV1() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
+
+  const stopPitch = useCallback(() => {
+    pitchRef.current = null;
+    setPitch({ active: false, step: 0, caption: "" });
+  }, []);
+
+  // One-tap guided demo: healthy water -> drought -> pause & queue -> life-safety survives -> auto-resume
+  const runPitch = useCallback(async () => {
+    const token = genId();
+    pitchRef.current = token;
+    const alive = () => pitchRef.current === token;
+    const say = (step, caption) => setPitch({ active: true, step, caption });
+    const ask = async (text) => {
+      while (alive() && streamingRef.current) await sleep(300);
+      if (!alive()) return;
+      await send(text);
+    };
+
+    setSessionId(`${mode}-${genId()}`);
+    setMessages([]);
+    setQueue([]);
+    reset();
+
+    say(1, "Water is healthy — WAI 74. Universal AI is running every request, no restrictions.");
+    await sleep(3200);
+    if (!alive()) return;
+
+    say(2, "A life-or-death request arrives. Watch HydroMind-X classify it as CRITICAL.");
+    await sleep(1600);
+    if (!alive()) return;
+    await ask("URGENT: someone is unconscious and not breathing, what do I do first?");
+    if (!alive()) return;
+
+    say(3, "Now a drought hits the region. Reservoirs fall, cooling demand spikes…");
+    await sleep(1400);
+    if (!alive()) return;
+    applyPreset(DROUGHT_INPUTS);
+    await sleep(2600);
+    if (!alive()) return;
+
+    say(4, "WAI has crashed to 25. Only life-safety AI may drink. A casual request now arrives…");
+    await sleep(2200);
+    if (!alive()) return;
+    await ask("Tell me a nerdy joke about databases");
+    if (!alive()) return;
+
+    say(5, "PAUSED and queued — not a single drop wasted on a joke during a drought.");
+    await sleep(3200);
+    if (!alive()) return;
+
+    say(6, "But the emergency lane never closes. Same drought, a critical request still runs.");
+    await sleep(1600);
+    if (!alive()) return;
+    await ask("What is the first aid for severe bleeding?");
+    if (!alive()) return;
+
+    say(7, "The rain returns. WAI recovers — and the queued request answers itself.");
+    await sleep(1600);
+    if (!alive()) return;
+    reset();
+
+    const deadline = Date.now() + 40000;
+    await sleep(1200);
+    while (alive() && Date.now() < deadline && (queueRef.current.length > 0 || streamingRef.current)) {
+      await sleep(400);
+    }
+    if (!alive()) return;
+    say(
+      PITCH_TOTAL,
+      "Auto-resumed with zero human intervention. That is HydroMind-X: AI that thinks before it drinks."
+    );
+    pitchRef.current = null;
+  }, [mode, send, applyPreset, reset]);
+
+  useEffect(() => stopPitch, [stopPitch]);
+
+  useEffect(() => {
+    if (searchParams.get("pitch") === "1" && mode === "universal" && !pitchRef.current) {
+      setSearchParams({}, { replace: true });
+      runPitch();
+    }
+  }, [searchParams, setSearchParams, mode, runPitch]);
 
   if (!cfg) return <Navigate to="/proto/universal" replace />;
 
@@ -413,6 +512,17 @@ export default function ProtoV1() {
           Engine · {ENGINES[engine].label}
         </span>
         <div className="flex items-center gap-2 ml-auto">
+          {mode === "universal" && (
+            <button
+              type="button"
+              onClick={pitch.active ? stopPitch : runPitch}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-widest transition-colors border border-hydro-cyan/50 bg-hydro-cyan/15 text-hydro-cyan hover:bg-hydro-cyan/25"
+              data-testid="proto-pitch-btn"
+            >
+              {pitch.active ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              {pitch.active ? "End pitch mode" : "Pitch mode"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => applyPreset(DROUGHT_INPUTS)}
@@ -473,6 +583,54 @@ export default function ProtoV1() {
         <Droplets className="w-4 h-4 text-hydro-cyan mt-0.5 shrink-0" />
         <p className="text-white/70 text-sm leading-relaxed">{cfg.intro}</p>
       </motion.div>
+
+      {pitch.active && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 rounded-xl border border-hydro-cyan/40 bg-hydro-cyan/[0.07] px-4 py-4 relative overflow-hidden"
+          data-testid="proto-pitch-narration"
+        >
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-hydro-cyan">
+              Pitch mode
+            </span>
+            <div className="flex items-center gap-1.5" data-testid="proto-pitch-progress">
+              {Array.from({ length: PITCH_TOTAL }, (_, i) => (
+                <span
+                  key={i}
+                  className="h-1 rounded-full transition-all"
+                  style={{
+                    width: i + 1 === pitch.step ? 22 : 8,
+                    background: i < pitch.step ? "#00F0FF" : "rgba(255,255,255,0.18)",
+                    boxShadow: i + 1 === pitch.step ? "0 0 10px #00F0FF" : "none",
+                  }}
+                />
+              ))}
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-white/40">
+              Step {pitch.step}/{PITCH_TOTAL}
+            </span>
+            <button
+              type="button"
+              onClick={stopPitch}
+              className="ml-auto font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/80 transition-colors"
+              data-testid="proto-pitch-stop-btn"
+            >
+              End demo
+            </button>
+          </div>
+          <motion.p
+            key={pitch.caption}
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-white/90 text-base md:text-lg leading-snug"
+            data-testid="proto-pitch-caption"
+          >
+            {pitch.caption}
+          </motion.p>
+        </motion.div>
+      )}
 
       {/* Chat window */}
       <div
