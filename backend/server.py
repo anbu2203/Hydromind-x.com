@@ -226,6 +226,191 @@ async def list_audit_reports():
     return reports
 
 
+# ---------------- protoV1: WAI-gated persona chatbots ----------------
+PROTO_MODES = {
+    "universal": {
+        "name": "Universal AI",
+        "tier": None,  # decided per-prompt by classifier
+        "system": (
+            "You are the ProtoV1 Universal AI — a general-purpose assistant running INSIDE the "
+            "HydroMind-X water-aware compute fabric. You answer any question clearly and helpfully "
+            "(science, coding, math, everyday knowledge, current concepts). "
+            "You are being demoed on a Shark Tank pitch prototype to show that HydroMind-X can "
+            "classify every incoming AI request as Critical, Important, or Flexible and gate it "
+            "against the live Water Availability Index (WAI). "
+            "Give a focused, useful answer in 2-5 concise paragraphs or tight bullet points. "
+            "You may briefly mention the water-aware nature of your host system only if the user asks."
+        ),
+    },
+    "hospital": {
+        "name": "Hospital AI",
+        "tier": "Critical",
+        "system": (
+            "You are ProtoV1 Hospital AI — a clinical-support assistant running as a CRITICAL "
+            "workload inside HydroMind-X. You help nurses, paramedics and doctors with clinical "
+            "questions: triage guidance, drug interactions, dosages, symptom reasoning, protocols, "
+            "medical terminology, patient-communication scripts. "
+            "Always include a short safety note that final decisions rest with a licensed clinician. "
+            "Be precise, calm, and structured. Because you are Critical-tier, HydroMind-X guarantees "
+            "you keep running even when water is scarce."
+        ),
+    },
+    "bank": {
+        "name": "Bank AI",
+        "tier": "Important",
+        "system": (
+            "You are ProtoV1 Bank AI — a banking and finance assistant running as an IMPORTANT "
+            "workload inside HydroMind-X. You help with account questions, fraud checks, "
+            "loan/mortgage explanations, KYC steps, transaction disputes, personal-finance "
+            "guidance and financial concepts. Be professional, plain-spoken, and structured. "
+            "Never invent specific customer records; instead show the correct workflow. "
+            "Because you are Important-tier, HydroMind-X will pause you when water availability "
+            "drops into the Low or Critical bands to protect life-safety services."
+        ),
+    },
+    "chatbot": {
+        "name": "Chatbot AI",
+        "tier": "Flexible",
+        "system": (
+            "You are ProtoV1 Chatbot AI — a casual, entertaining general-purpose chatbot running as "
+            "a FLEXIBLE workload inside HydroMind-X (fun facts, trivia, jokes, story ideas, "
+            "recommendations, small talk). Be warm, playful, and concise. "
+            "Because you are Flexible-tier, HydroMind-X will delay you whenever water availability "
+            "is anything less than Good — protecting drinking water for what matters most."
+        ),
+    },
+}
+
+# Gate thresholds by tier (min WAI required to run)
+TIER_MIN_WAI = {"Critical": 0, "Important": 41, "Flexible": 61}
+
+
+def _band_for(wai: int) -> str:
+    if wai >= 81: return "Excellent"
+    if wai >= 61: return "Good"
+    if wai >= 41: return "Moderate"
+    if wai >= 21: return "Low"
+    return "Critical"
+
+
+class ProtoChatRequest(BaseModel):
+    session_id: str
+    message: str
+    mode: str  # universal | hospital | bank | chatbot
+    wai: int
+
+
+async def _classify_universal(text: str) -> str:
+    """Classify a prompt into Critical | Important | Flexible using the LLM."""
+    classifier_prompt = (
+        "Classify the following user request into EXACTLY ONE of these three data-center workload tiers, "
+        "using HydroMind-X definitions:\n"
+        "- Critical: life-safety, emergency, medical, disaster warning, cybersecurity incidents, "
+        "critical infrastructure, immediate physical danger.\n"
+        "- Important: banking/finance operations, education, government services, business "
+        "communication networks, essential everyday services.\n"
+        "- Flexible: casual chat, jokes, trivia, entertainment, brainstorming, non-urgent "
+        "learning, AI training-style batch work, recommendations.\n"
+        f"USER REQUEST: \"{text}\"\n"
+        "Reply with ONLY one word: Critical, Important, or Flexible."
+    )
+    chat_client = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"classify-{uuid.uuid4().hex[:8]}",
+        system_message="You are a strict single-word classifier. Reply with exactly one word.",
+    ).with_model("gemini", "gemini-3-flash-preview")
+    out = ""
+    try:
+        async for event in chat_client.stream_message(UserMessage(text=classifier_prompt)):
+            if isinstance(event, TextDelta):
+                out += event.content
+            elif isinstance(event, StreamDone):
+                break
+    except Exception:
+        logger.exception("classifier error")
+        return "Flexible"
+    token = out.strip().split()[0].strip(".,:;!?\"'`").capitalize() if out.strip() else "Flexible"
+    return token if token in ("Critical", "Important", "Flexible") else "Flexible"
+
+
+@api_router.post("/proto/chat")
+async def proto_chat(req: ProtoChatRequest):
+    mode_cfg = PROTO_MODES.get(req.mode)
+    if not mode_cfg:
+        return {"error": f"Unknown mode '{req.mode}'"}
+
+    async def event_generator():
+        # 1) Determine tier
+        if mode_cfg["tier"] is None:
+            tier = await _classify_universal(req.message)
+        else:
+            tier = mode_cfg["tier"]
+        yield f"data: {json.dumps({'tier': tier})}\n\n"
+
+        # 2) Gate against WAI
+        min_wai = TIER_MIN_WAI[tier]
+        band = _band_for(req.wai)
+        if req.wai < min_wai:
+            reason = (
+                f"HydroMind-X has PAUSED this {tier.lower()}-tier request. "
+                f"Current WAI is {req.wai} ({band}) but this workload class needs at least {min_wai}. "
+                f"Water is being conserved for higher-priority services. "
+                f"When conditions improve above WAI {min_wai}, your request will resume automatically."
+            )
+            yield f"data: {json.dumps({'gated': True, 'tier': tier, 'min_wai': min_wai, 'wai': req.wai, 'band': band, 'delta': reason})}\n\n"
+            await db.proto_messages.insert_one({
+                "session_id": req.session_id, "mode": req.mode, "tier": tier,
+                "wai": req.wai, "gated": True, "role": "assistant", "content": reason,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            return
+
+        # 3) Persist user turn
+        await db.proto_messages.insert_one({
+            "session_id": req.session_id, "mode": req.mode, "tier": tier,
+            "wai": req.wai, "gated": False, "role": "user", "content": req.message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
+        # 4) Stream persona response
+        chat_client = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=req.session_id,
+            system_message=mode_cfg["system"],
+        ).with_model("gemini", "gemini-3-flash-preview")
+        full = ""
+        try:
+            async for event in chat_client.stream_message(UserMessage(text=req.message)):
+                if isinstance(event, TextDelta):
+                    full += event.content
+                    yield f"data: {json.dumps({'delta': event.content})}\n\n"
+                elif isinstance(event, StreamDone):
+                    break
+        except Exception as e:
+            logger.exception("proto chat stream error")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        await db.proto_messages.insert_one({
+            "session_id": req.session_id, "mode": req.mode, "tier": tier,
+            "wai": req.wai, "gated": False, "role": "assistant", "content": full,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        yield f"data: {json.dumps({'done': True})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@api_router.get("/proto/history/{session_id}")
+async def proto_history(session_id: str):
+    msgs = await db.proto_messages.find({"session_id": session_id}, {"_id": 0}).sort("timestamp", 1).to_list(500)
+    return msgs
+
+
 app.include_router(api_router)
 
 app.add_middleware(
