@@ -1,10 +1,12 @@
-from fastapi import FastAPI, APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, APIRouter, Header, HTTPException
+from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import re
 import json
+import hashlib
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -13,6 +15,7 @@ import uuid
 from datetime import datetime, timezone
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+from emergentintegrations.llm.openai import OpenAITextToSpeech
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -429,6 +432,154 @@ async def proto_chat(req: ProtoChatRequest):
 async def proto_history(session_id: str):
     msgs = await db.proto_messages.find({"session_id": session_id}, {"_id": 0}).sort("timestamp", 1).to_list(500)
     return msgs
+
+
+# ---------------- Narration (OpenAI TTS) ----------------
+TTS_DIR = ROOT_DIR / "tts_cache"
+TTS_DIR.mkdir(exist_ok=True)
+TTS_VOICE = "nova"
+TTS_MODEL = "tts-1"
+
+
+def _clean_for_tts(text: str) -> str:
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"`{1,3}[^`]*`{1,3}", "", text)
+    text = re.sub(r"[*_#>~|]", "", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+class NarrateRequest(BaseModel):
+    text: str
+    voice: str = TTS_VOICE
+    speed: float = 1.0
+    model: str = TTS_MODEL
+
+
+@api_router.post("/tts/narrate")
+async def tts_narrate(req: NarrateRequest):
+    text = _clean_for_tts(req.text)[:1000]
+    if not text:
+        return {"error": "Empty text"}
+    model = req.model if req.model in ("tts-1", "tts-1-hd") else TTS_MODEL
+    key = hashlib.sha256(f"{text}|{req.voice}|{req.speed}|{model}|mp3".encode()).hexdigest()[:32]
+    path = TTS_DIR / f"{key}.mp3"
+    if not path.exists():
+        try:
+            tts = OpenAITextToSpeech(api_key=EMERGENT_LLM_KEY)
+            audio = await tts.generate_speech(
+                text=text, model=model, voice=req.voice, speed=req.speed, response_format="mp3"
+            )
+            path.write_bytes(audio)
+        except Exception as e:
+            logger.exception("tts error")
+            return {"error": _friendly_llm_error(e)}
+    return {"url": f"/api/tts/{key}.mp3", "cached": True}
+
+
+@api_router.get("/tts/{key}.mp3")
+async def tts_audio(key: str):
+    path = TTS_DIR / f"{Path(key).name}.mp3"
+    if not path.exists():
+        return Response(status_code=404, content=b"")
+    return Response(
+        content=path.read_bytes(),
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "public, max-age=31536000"},
+    )
+
+
+# ---------------- Drop-in Gateway API ----------------
+GATEWAY_DEMO_KEY = "hmx_demo_key"
+
+
+class GatewayRequest(BaseModel):
+    prompt: str
+    tier: Optional[str] = None  # Critical | Important | Flexible | None (auto-classify)
+    wai: Optional[int] = None  # live telemetry override (demo)
+    engine: str = "gemini"
+
+
+@api_router.post("/gateway/v1/complete")
+async def gateway_complete(req: GatewayRequest, x_hydromind_key: Optional[str] = Header(default=None)):
+    started = datetime.now(timezone.utc)
+    if x_hydromind_key and x_hydromind_key != GATEWAY_DEMO_KEY:
+        raise HTTPException(status_code=401, detail="Unknown HydroMind-X gateway key.")
+
+    engine = req.engine if req.engine in PROTO_ENGINES else "gemini"
+    eng_cfg = PROTO_ENGINES[engine]
+    wai = req.wai if req.wai is not None else 74
+    band = _band_for(wai)
+
+    tier = req.tier if req.tier in TIER_MIN_WAI else await _classify_universal(req.prompt, engine)
+    min_wai = TIER_MIN_WAI[tier]
+    allowed = wai >= min_wai
+
+    result = {
+        "request_id": str(uuid.uuid4()),
+        "tier": tier,
+        "wai": wai,
+        "band": band,
+        "min_wai": min_wai,
+        "decision": "allow" if allowed else "defer",
+        "model": f"{eng_cfg['provider']}/{eng_cfg['model']}",
+    }
+
+    if not allowed:
+        result.update({
+            "completion": None,
+            "reason": (
+                f"Water stress: WAI {wai} ({band}) is below the {min_wai} required for "
+                f"{tier}-tier workloads. Retry when WAI recovers."
+            ),
+            "retry_when_wai_gte": min_wai,
+            "water_saved_ml": round((min_wai - wai) * 18.5, 1),
+        })
+    else:
+        chat_client = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"gateway-{result['request_id']}",
+            system_message=(
+                "You are an AI completion service running behind the HydroMind-X water gateway. "
+                "Answer the user's prompt directly and concisely (max 3 short paragraphs)."
+            ),
+        ).with_model(eng_cfg["provider"], eng_cfg["model"])
+        text = ""
+        try:
+            async for event in chat_client.stream_message(UserMessage(text=req.prompt)):
+                if isinstance(event, TextDelta):
+                    text += event.content
+                elif isinstance(event, StreamDone):
+                    break
+        except Exception as e:
+            logger.exception("gateway completion error")
+            return {**result, "completion": None, "error": _friendly_llm_error(e)}
+        result["completion"] = text.strip()
+
+    result["latency_ms"] = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+    await db.gateway_requests.insert_one({
+        **result, "prompt": req.prompt, "engine": engine,
+        "timestamp": started.isoformat(),
+    })
+    return result
+
+
+@api_router.get("/gateway/v1/stats")
+async def gateway_stats():
+    total = await db.gateway_requests.count_documents({})
+    deferred = await db.gateway_requests.count_documents({"decision": "defer"})
+    by_tier = {}
+    for tier in TIER_MIN_WAI:
+        by_tier[tier] = await db.gateway_requests.count_documents({"tier": tier})
+    saved = await db.gateway_requests.aggregate([
+        {"$group": {"_id": None, "ml": {"$sum": "$water_saved_ml"}}}
+    ]).to_list(1)
+    return {
+        "total_requests": total,
+        "deferred": deferred,
+        "allowed": total - deferred,
+        "by_tier": by_tier,
+        "water_saved_ml": round((saved[0]["ml"] if saved else 0) or 0, 1),
+    }
 
 
 app.include_router(api_router)

@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Cooling = lazy(() => import("@/pages/Cooling"));
 const Assistant = lazy(() => import("@/pages/Assistant"));
 const ProtoV1 = lazy(() => import("@/pages/ProtoV1"));
+const Gateway = lazy(() => import("@/pages/Gateway"));
 
 const PageFallback = () => (
   <div className="max-w-[1400px] mx-auto px-5 py-20 flex items-center justify-center" data-testid="page-loading">
@@ -31,6 +32,7 @@ function App() {
               <Route path="/assistant" element={<Assistant />} />
               <Route path="/proto" element={<ProtoV1 />} />
               <Route path="/proto/:mode" element={<ProtoV1 />} />
+              <Route path="/gateway" element={<Gateway />} />
             </Routes>
           </Suspense>
         </ScenarioProvider>

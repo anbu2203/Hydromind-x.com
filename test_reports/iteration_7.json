@@ -1,0 +1,28 @@
+{
+  "summary": "Iteration 7 focused testing of the new bold female 'nova' TTS voice and the EN/தமிழ் narration language switcher on /proto/universal, plus the /api/gateway/v1/complete 401 regression. Backend pytest 12/12 pass. Frontend flows all pass: switcher visibility+persistence, Tamil pitch (all 8 narrate POSTs use voice=nova + model=tts-1-hd + Tamil script), English pitch (voice=nova + model=tts-1, no Tamil chars), mid-run EN→TA swap at step 2 (remaining beats correctly switch to tts-1-hd Tamil without restart or duplicate prompts, still 3 user bubbles + 1 resumed bubble). No horizontal overflow at mobile 390x844. Switcher is correctly absent on /proto/bank.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_gateway_tts.py",
+    "/app/test_reports/pytest/iter7_backend.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "MINOR (testability): The proto-voice-toggle button has no aria-pressed attribute; only inner text ('Voice on' vs 'Muted') indicates state. Testing agents will misread state without an aria-pressed flag - initially caused false 'no per-beat narrate POST' observations in this iteration. Consider adding aria-pressed={voiceOn} to the button.",
+    "MINOR: When the queued Flexible bubble is auto-resumed, proto-msg-queued is replaced by proto-msg-resumed in the DOM (no queued bubble remains at end-of-run). This is arguably correct UX but the review brief mentions 'a gated bubble and then a proto-msg-resumed bubble' - both do appear during the run but not simultaneously at the end. Not a bug."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_gateway_tts.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Gateway demo key hmx_demo_key. No user auth.",
+  "seed_data_creation": "None. 16 narration mp3 clips (8 EN + 8 TA) already pre-warmed in /app/backend/tts_cache from prior work.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "New pytest tests added: test_nova_voice_model_cache_key (model is in the sha256 cache key), test_invalid_model_falls_back (tts-9 -> tts-1 URL equality), test_tamil_script_narration (Tamil unicode body accepted). test_invalid_key now asserts HTTP 401 (previously accepted 200 with error body). If testing pitch flows in Playwright, DO NOT rely on aria-pressed of proto-voice-toggle - it is absent; use inner text 'Voice on' vs 'Muted'. Also note: proto-msg-queued is replaced by proto-msg-resumed after auto-resume, so at end-of-run only the resumed bubble is in the DOM.",
+  "rca of the issue": "N/A - no bugs found. During test authoring I first assumed proto-voice-toggle exposed aria-pressed; because it does not, my initial ensure_voice_on() call inadvertently toggled voice OFF, which suppressed per-beat narrate() POSTs (pre-warm posts still fired because they run unconditionally, giving a misleading 8/8 count). Fixed by asserting on button text; per-beat narrate POSTs then flow correctly and language switching is fully verified end-to-end (15 POSTs per full run: 8 pre-warm + 7-8 per-beat, depending on cache warmth)."
+}

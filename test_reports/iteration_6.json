@@ -1,0 +1,20 @@
+{
+  "summary": "Full backend + frontend testing of NEW gateway API, OpenAI TTS narration and voice-narrated 8-step Pitch Mode. Backend: 9/9 pytest tests PASS - gateway /api/gateway/v1/complete correctly (a) allows at WAI 90 with completion + Excellent band, (b) defers Flexible at WAI 25 with retry_when_wai_gte=61 and positive water_saved_ml, (c) still allows Critical at WAI 10 (life-safety), (d) auto-classifies an ER emergency prompt as Critical, (e) rejects bogus X-HydroMind-Key with invalid_key, (f) works with no key header, (g) /stats returns all counters and increments on new requests. TTS /api/tts/narrate returns a stable /api/tts/<hash>.mp3 URL, mp3 GET is 200 audio/mpeg >5KB, second call same-text is cache-hit same URL, and /api/tts/deadbeef.mp3 404s. Frontend: /gateway page renders with WAI chip, 4 stat cards, playground and snippet panel; sending a Flexible request at default WAI 74 returns '200 · Allow' with tier badge + latency + completion + Raw JSON expand; language tabs curl/python/javascript all swap the snippet correctly and it reflects live prompt text; copy button works; nav-gateway link visible. Defer path verified via /proto/hospital Drought preset (nav WAI → 25) + SPA nav to /gateway: badge shows '429 · Defer', reason mentions water stress, '666 ml of cooling water not drawn' line appears, deferred stat card increments 3→4. Pitch Mode /proto/universal: proto-voice-toggle default 'Voice on', flips to 'Muted', localStorage hmx-pitch-voice='off' persists across reload; toggling back and running Pitch produced 16 POST /api/tts/narrate + 8 GET /api/tts/*.mp3 requests, ran end-to-end to Step 8/8 (visible in screenshot with closing line 'Auto-resumed with zero human intervention. That is HydroMind-X: AI that thinks before it drinks.'), exactly 3 user bubbles, WAI dropped mid-way and the joke was gated then auto-resumed with AUTO-RESUMED badge (1 resumed bubble present, queued bubble replaced by resumed on WAI restore as expected). Mobile 390x844 shows 0px horizontal overflow on /, /gateway and /proto/universal.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_gateway_tts.py", "/app/test_reports/pytest/gateway_tts.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "During a single 8-step Pitch run the frontend fired 16 POST /api/tts/narrate calls (2x the 8 lines) but only 8 mp3 GETs. The extra POSTs are cache-hits (same URL) so no user impact, but ProtoV1.js narrate() is likely being invoked twice per beat (probably a React 18 StrictMode double effect or the beat awaiting Promise.all fires it plus a re-render). Consider guarding narrate() with a per-line ref to save 50% of OpenAI TTS quota after the disk cache warms.",
+    "server.py is 597 lines with three separate concerns (chat/proto/gateway/tts) - consider splitting into routers for maintainability.",
+    "GATEWAY_DEMO_KEY is hardcoded; move to env for a real product surface.",
+    "gateway_complete returns error bodies with HTTP 200 (e.g. invalid_key). Consider proper 401/400 status codes for the public API."
+  ],
+  "updated_files": ["/app/backend/tests/test_gateway_tts.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (all 6 flows)"},
+  "seed_data_creation": "gateway_requests collection accumulated ~13 entries during testing (mix of allow/defer). Not blocking.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All new features work: gateway API, TTS narration + disk cache, /gateway UI, 8-step Pitch with voice. Only minor code-quality feedback (duplicate narrate() calls per beat, hardcoded demo key, monolithic server.py). Screenshots saved under /app/test_reports/gateway_page.png and gateway_defer.png. TTS cache directory /app/backend/tts_cache is populated so subsequent test runs are very fast.",
+  "rca of the issue": "N/A - no bugs found."
+}

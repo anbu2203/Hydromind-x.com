@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   Cpu, HeartPulse, Landmark, Sparkles, Bot, User, Send, ShieldCheck, ShieldAlert,
   Droplets, Zap, Clock, ArrowRight, Brain, CloudRain, RotateCcw, Hourglass, Play, Square,
+  Volume2, VolumeX, Languages,
 } from "lucide-react";
 import { useScenario } from "../context/ScenarioContext";
 import { DROUGHT_INPUTS } from "../lib/hydro";
@@ -91,7 +92,39 @@ const TIER_COLOR = {
 
 const genId = () => Math.random().toString(36).slice(2);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const PITCH_TOTAL = 7;
+
+const PITCH_LINES = {
+  en: {
+    1: "Water is healthy — WAI 74. Universal AI is running every request, no restrictions.",
+    2: "A life-or-death request arrives. Watch HydroMind-X classify it as Critical.",
+    3: "Now a drought hits the region. Reservoirs fall, cooling demand spikes.",
+    4: "WAI has crashed to 25. Only life-safety AI may drink. A casual request now arrives.",
+    5: "Paused and queued — not a single drop wasted on a joke during a drought.",
+    6: "But the emergency lane never closes. Same drought, a critical request still runs.",
+    7: "The rain returns. WAI recovers — and the queued request answers itself.",
+    8: "Auto-resumed with zero human intervention. That is HydroMind-X: AI that thinks before it drinks.",
+  },
+  ta: {
+    1: "நீர் நிலை சிறப்பாக உள்ளது. WAI எழுபத்து நான்கு. யுனிவர்சல் AI எல்லா கோரிக்கைகளையும் இயக்குகிறது, எந்த தடையும் இல்லை.",
+    2: "உயிர் காக்கும் அவசர கோரிக்கை வருகிறது. ஹைட்ரோமைண்ட் எக்ஸ் அதை க்ரிட்டிகல் என வகைப்படுத்துவதைப் பாருங்கள்.",
+    3: "இப்போது பெரும் வறட்சி தாக்குகிறது. நீர்த்தேக்கங்கள் குறைகின்றன, குளிரூட்டல் தேவை உயர்கிறது.",
+    4: "WAI இருபத்து ஐந்துக்கு சரிந்துவிட்டது. உயிர் காக்கும் AI மட்டுமே தண்ணீர் பெறும். இப்போது ஒரு சாதாரண கோரிக்கை வருகிறது.",
+    5: "நிறுத்தப்பட்டு வரிசையில் வைக்கப்பட்டது. வறட்சியின் போது ஒரு நகைச்சுவைக்காக ஒரு துளி தண்ணீரும் வீணாகவில்லை.",
+    6: "ஆனால் அவசர பாதை எப்போதும் மூடப்படுவதில்லை. அதே வறட்சியில் க்ரிட்டிகல் கோரிக்கை இயங்குகிறது.",
+    7: "மழை திரும்பியது. WAI மீண்டு எழுகிறது. வரிசையில் இருந்த கோரிக்கை தானாகவே பதிலளிக்கிறது.",
+    8: "மனித தலையீடு இல்லாமல் தானாகவே தொடர்ந்தது. இதுவே ஹைட்ரோமைண்ட் எக்ஸ் — குடிப்பதற்கு முன் சிந்திக்கும் AI.",
+  },
+};
+const PITCH_LANGS = {
+  en: { key: "en", label: "English", short: "EN" },
+  ta: { key: "ta", label: "தமிழ்", short: "தமிழ்" },
+};
+const NARRATION_VOICE = "nova"; // bold, energetic female
+const VOICE_CFG = {
+  en: { voice: NARRATION_VOICE, model: "tts-1", speed: 1.0 },
+  ta: { voice: NARRATION_VOICE, model: "tts-1-hd", speed: 0.92 },
+};
+const PITCH_TOTAL = 8;
 
 export const ENGINES = {
   gemini: { key: "gemini", label: "Gemini 3 Flash", short: "Gemini", accent: "#00F0FF" },
@@ -251,8 +284,15 @@ export default function ProtoV1() {
   );
   const [queue, setQueue] = useState([]);
   const [pitch, setPitch] = useState({ active: false, step: 0, caption: "" });
+  const [voiceOn, setVoiceOn] = useState(
+    () => localStorage.getItem("hmx-pitch-voice") !== "off"
+  );
+  const [lang, setLang] = useState(() => localStorage.getItem("hmx-pitch-lang") || "en");
   const streamingRef = useRef(false);
-  const pitchRef = useRef(false);
+  const pitchRef = useRef(null);
+  const audioRef = useRef(null);
+  const voiceRef = useRef(voiceOn);
+  const langRef = useRef(lang);
   const queueRef = useRef([]);
   const waiRef = useRef(wai);
   const scrollRef = useRef(null);
@@ -264,6 +304,18 @@ export default function ProtoV1() {
   useEffect(() => {
     queueRef.current = queue;
   }, [queue]);
+
+  useEffect(() => {
+    localStorage.setItem("hmx-pitch-lang", lang);
+    langRef.current = lang;
+    setPitch((p) => (p.active ? { ...p, caption: PITCH_LINES[lang][p.step] || p.caption } : p));
+  }, [lang]);
+
+  useEffect(() => {
+    localStorage.setItem("hmx-pitch-voice", voiceOn ? "on" : "off");
+    voiceRef.current = voiceOn;
+    if (!voiceOn && audioRef.current) audioRef.current.pause();
+  }, [voiceOn]);
 
   useEffect(() => {
     localStorage.setItem("hmx-proto-engine", engine);
@@ -379,7 +431,34 @@ export default function ProtoV1() {
 
   const stopPitch = useCallback(() => {
     pitchRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setPitch({ active: false, step: 0, caption: "" });
+  }, []);
+
+  // Narrate a line with OpenAI TTS; resolves when playback ends (or immediately if muted/blocked).
+  const narrate = useCallback(async (text) => {
+    if (!voiceRef.current) return;
+    try {
+      const res = await fetch(`${API}/tts/narrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, ...VOICE_CFG[langRef.current] }),
+      });
+      const data = await res.json();
+      if (!data.url || !voiceRef.current) return;
+      const audio = audioRef.current || (audioRef.current = new Audio());
+      audio.src = `${BACKEND_URL}${data.url}`;
+      await audio.play();
+      await new Promise((resolve) => {
+        audio.onended = resolve;
+        audio.onerror = resolve;
+      });
+    } catch (e) {
+      /* muted, blocked by autoplay policy, or TTS unavailable — demo continues silently */
+    }
   }, []);
 
   // One-tap guided demo: healthy water -> drought -> pause & queue -> life-safety survives -> auto-resume
@@ -387,7 +466,11 @@ export default function ProtoV1() {
     const token = genId();
     pitchRef.current = token;
     const alive = () => pitchRef.current === token;
-    const say = (step, caption) => setPitch({ active: true, step, caption });
+    const beat = async (step, ms) => {
+      const line = PITCH_LINES[langRef.current][step];
+      setPitch({ active: true, step, caption: line });
+      await Promise.all([narrate(line), sleep(ms)]);
+    };
     const ask = async (text) => {
       while (alive() && streamingRef.current) await sleep(300);
       if (!alive()) return;
@@ -398,42 +481,43 @@ export default function ProtoV1() {
     setMessages([]);
     setQueue([]);
     reset();
+    // warm the narration cache so later lines play instantly
+    Object.values(PITCH_LINES[langRef.current]).forEach((line) => {
+      fetch(`${API}/tts/narrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: line, ...VOICE_CFG[langRef.current] }),
+      }).catch(() => {});
+    });
 
-    say(1, "Water is healthy — WAI 74. Universal AI is running every request, no restrictions.");
-    await sleep(3200);
+    await beat(1, 3200);
     if (!alive()) return;
 
-    say(2, "A life-or-death request arrives. Watch HydroMind-X classify it as CRITICAL.");
-    await sleep(1600);
+    await beat(2, 1600);
     if (!alive()) return;
     await ask("URGENT: someone is unconscious and not breathing, what do I do first?");
     if (!alive()) return;
 
-    say(3, "Now a drought hits the region. Reservoirs fall, cooling demand spikes…");
-    await sleep(1400);
+    await beat(3, 1400);
     if (!alive()) return;
     applyPreset(DROUGHT_INPUTS);
-    await sleep(2600);
+    await sleep(2200);
     if (!alive()) return;
 
-    say(4, "WAI has crashed to 25. Only life-safety AI may drink. A casual request now arrives…");
-    await sleep(2200);
+    await beat(4, 2000);
     if (!alive()) return;
     await ask("Tell me a nerdy joke about databases");
     if (!alive()) return;
 
-    say(5, "PAUSED and queued — not a single drop wasted on a joke during a drought.");
-    await sleep(3200);
+    await beat(5, 2600);
     if (!alive()) return;
 
-    say(6, "But the emergency lane never closes. Same drought, a critical request still runs.");
-    await sleep(1600);
+    await beat(6, 1600);
     if (!alive()) return;
     await ask("What is the first aid for severe bleeding?");
     if (!alive()) return;
 
-    say(7, "The rain returns. WAI recovers — and the queued request answers itself.");
-    await sleep(1600);
+    await beat(7, 1600);
     if (!alive()) return;
     reset();
 
@@ -443,12 +527,9 @@ export default function ProtoV1() {
       await sleep(400);
     }
     if (!alive()) return;
-    say(
-      PITCH_TOTAL,
-      "Auto-resumed with zero human intervention. That is HydroMind-X: AI that thinks before it drinks."
-    );
+    await beat(PITCH_TOTAL, 600);
     pitchRef.current = null;
-  }, [mode, send, applyPreset, reset]);
+  }, [mode, send, applyPreset, reset, narrate]);
 
   useEffect(() => stopPitch, [stopPitch]);
 
@@ -511,7 +592,46 @@ export default function ProtoV1() {
         <span className="font-mono text-[10px] uppercase tracking-widest text-white/40">
           Engine · {ENGINES[engine].label}
         </span>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto sm:ml-auto">
+          {mode === "universal" && (
+            <div
+              className="inline-flex items-center gap-1 p-1 rounded-full border border-white/10 bg-hydro-void/60"
+              data-testid="proto-lang-switcher"
+            >
+              <Languages className="w-3.5 h-3.5 text-white/40 ml-1.5" />
+              {Object.values(PITCH_LANGS).map((l) => (
+                <button
+                  key={l.key}
+                  type="button"
+                  onClick={() => setLang(l.key)}
+                  className={`px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest transition-colors border ${
+                    lang === l.key
+                      ? "border-hydro-cyan/55 bg-hydro-cyan/15 text-hydro-cyan"
+                      : "border-transparent text-white/45 hover:text-white/80"
+                  }`}
+                  data-testid={`proto-lang-${l.key}`}
+                >
+                  {l.short}
+                </button>
+              ))}
+            </div>
+          )}
+          {mode === "universal" && (
+            <button
+              type="button"
+              onClick={() => setVoiceOn((v) => !v)}
+              title={voiceOn ? "Narration on" : "Narration muted"}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-widest transition-colors border ${
+                voiceOn
+                  ? "border-hydro-cyan/40 bg-hydro-cyan/10 text-hydro-cyan"
+                  : "border-white/15 text-white/45 hover:text-white/80"
+              }`}
+              data-testid="proto-voice-toggle"
+            >
+              {voiceOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              {voiceOn ? "Voice on" : "Muted"}
+            </button>
+          )}
           {mode === "universal" && (
             <button
               type="button"

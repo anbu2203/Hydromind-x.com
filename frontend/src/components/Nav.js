@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   Droplets, LayoutDashboard, Snowflake, MessageSquareText,
-  FlaskConical, Cpu, HeartPulse, Landmark, Sparkles, ChevronDown, Play,
+  FlaskConical, Cpu, HeartPulse, Landmark, Sparkles, ChevronDown, Play, Plug,
 } from "lucide-react";
 import { useScenario } from "../context/ScenarioContext";
 
@@ -10,6 +10,7 @@ const links = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, testid: "nav-dashboard" },
   { to: "/cooling", label: "Cooling", icon: Snowflake, testid: "nav-cooling" },
   { to: "/assistant", label: "AI Assistant", icon: MessageSquareText, testid: "nav-assistant" },
+  { to: "/gateway", label: "Gateway", icon: Plug, testid: "nav-gateway" },
 ];
 
 const protoLinks = [
@@ -76,7 +77,7 @@ export const Nav = () => {
             <Droplets className="w-7 h-7 text-hydro-cyan text-glow-cyan" strokeWidth={2.2} />
             <span className="absolute inset-0 animate-pulse-glow" />
           </div>
-          <div className="leading-none min-w-0">
+          <div className="leading-none min-w-0 hidden sm:block">
             <div className="font-display font-black text-base sm:text-lg tracking-tighter uppercase whitespace-nowrap">
               Hydro<span className="text-hydro-cyan">Mind</span>-X
             </div>
