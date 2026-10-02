@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, Minus, Sparkles, Loader2, CloudSun } from "lu
 import { useScenario } from "../context/ScenarioContext";
 import { projectTomorrow } from "../lib/hydro";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND_URL}/api`;
 
 export const ForecastCard = () => {

@@ -3,7 +3,7 @@ import { FileText, Download, Printer, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useScenario } from "../context/ScenarioContext";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND_URL}/api`;
 
 export const AuditReport = () => {
